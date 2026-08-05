@@ -170,6 +170,13 @@
   .clave-err{color:var(--warn); font-size:.82rem; font-weight:600; min-height:1.1em}
   .clave-hint{font-size:.76rem; color:var(--ink-faint)}
 
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px); z-index:120;
+    max-width:min(92vw,460px); padding:12px 16px; border-radius:12px; font-size:.88rem; font-weight:600;
+    box-shadow:0 8px 28px rgba(0,0,0,.22); opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; text-align:center}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  .toast.warn{background:var(--warn); color:#fff}
+  .toast.ok{background:var(--accent); color:#fff}
+
   @media (max-width:520px){
     .wrap{padding:20px 14px 64px}
     .pp .amt{font-size:1.5rem}
@@ -437,6 +444,23 @@
 
   function roomById(id){ for(var i=0;i<ROOMS.length;i++){ if(ROOMS[i].id===id) return ROOMS[i]; } return null; }
 
+  // ---- Aviso emergente (toast) ----
+  var toastEl = null, toastTimer = null;
+  function toast(msg, kind){
+    if(!toastEl){ toastEl = document.createElement("div"); toastEl.className = "toast"; document.body.appendChild(toastEl); }
+    toastEl.textContent = msg;
+    toastEl.className = "toast " + (kind || "warn") + " show";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.className = "toast " + (kind || "warn"); }, 4200);
+  }
+  function writeErr(e){
+    var code = (e && e.code) || (e && e.message) || "error";
+    if(String(code).indexOf("permission") >= 0 || String(code).indexOf("PERMISSION") >= 0)
+      toast("No se pudo guardar: permiso denegado. Revisa las reglas de la base de datos (Parte B).", "warn");
+    else
+      toast("No se pudo guardar: " + code, "warn");
+  }
+
   // ---- Sincronización con Firebase ----
   function setSync(kind, text){
     var el = document.getElementById("sync");
@@ -523,8 +547,8 @@
   function claveErr(msg){ var e = document.getElementById("clave-err"); if(e) e.textContent = msg || ""; }
   function claveBusy(on){ var btn = document.getElementById("clave-btn"); if(btn){ btn.disabled = !!on; btn.textContent = on ? "Entrando…" : "Entrar"; } if(!on){} else claveErr(""); }
 
-  function pushRoom(id){ if(online && dbRef){ var s = state.rooms[id]; dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" }); } }
-  function pushLogRemote(entry){ if(online && dbRef){ dbRef.child("log").push(entry); } }
+  function pushRoom(id){ if(online && dbRef){ var s = state.rooms[id]; dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" }).catch(writeErr); } }
+  function pushLogRemote(entry){ if(online && dbRef){ var r = dbRef.child("log").push(entry); if(r && r.catch) r.catch(writeErr); } }
 
   // ---- Eventos ----
   grid.addEventListener("click", function(ev){
@@ -540,7 +564,8 @@
     if(fix){
       var input2 = document.getElementById("bid-"+fix);
       var v2 = parseFloat(input2.value);
-      if(isNaN(v2) || v2 < 0){ input2.focus(); return; }
+      if(isNaN(v2) || v2 < 0){ toast("Escribe tu puja por persona (un número) antes de fijar.", "warn"); input2.focus(); return; }
+      if(FIREBASE_CONFIG && !online){ toast("Sin conexión en vivo todavía. Espera a que diga «En vivo» arriba.", "warn"); }
       var was = state.rooms[fix].bid;
       state.rooms[fix].bid = v2;
       state.rooms[fix].occ = document.getElementById("occ-"+fix).value;
