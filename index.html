@@ -510,7 +510,7 @@
               } else if(c2 === "auth/operation-not-allowed"){ claveBusy(false); claveErr("Falta activar Email/Password en Firebase (Authentication).");
               } else { claveBusy(false); claveErr("No se pudo entrar: " + (c2 || "error")); }
             });
-        } else if(code === "auth/operation-not-allowed"){ claveBusy(false); claveErr("Falta activar Email/Password en Firebase (Authentication).");
+        } else if(code === "auth/operation-not-allowed" || code === "auth/configuration-not-found"){ claveBusy(false); claveErr("Falta activar Email/Password en Firebase (Authentication → Sign-in method).");
         } else if(code === "auth/network-request-failed"){ claveBusy(false); claveErr("Sin conexión. Revisa tu internet.");
         } else { claveBusy(false); if(!silent) claveErr("No se pudo entrar: " + (code || "error")); else showClave(); }
       });
