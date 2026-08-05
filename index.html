@@ -221,21 +221,8 @@
   <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante.</footer>
 </div>
 
-<div class="clavebox" id="clavebox" hidden>
-  <div class="clavecard">
-    <div class="clave-emoji">🎿</div>
-    <h2>Subasta Casa Ski 2027</h2>
-    <p>Ingresa la clave del grupo para entrar a la subasta en vivo.</p>
-    <input type="password" id="clave-input" placeholder="Clave del grupo" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <div class="clave-err" id="clave-err"></div>
-    <button class="primary" id="clave-btn" type="button">Entrar</button>
-    <p class="clave-hint">Mínimo 6 caracteres. La primera persona que entra define la clave para todos.</p>
-  </div>
-</div>
-
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 
 <script>
@@ -468,7 +455,6 @@
     document.getElementById("sync-txt").textContent = text;
   }
 
-  var SHARED_EMAIL = "grupo@casa-ski.subasta"; // fijo (no es secreto); la clave es la contraseña
   var dbAttached = false;
 
   function initSync(){
@@ -479,13 +465,7 @@
     try{
       firebase.initializeApp(FIREBASE_CONFIG);
       dbRef = firebase.database().ref("subastas/" + ROOM);
-      var auth = firebase.auth();
-      auth.onAuthStateChanged(function(user){
-        if(user){ hideClave(); attachDB(); }
-        else { online = false; showClave(); setSync("err", "Ingresa la clave"); }
-      });
-      var saved = null; try{ saved = localStorage.getItem("subasta-clave"); }catch(e){}
-      if(saved){ doAuth(saved, true); } else { showClave(); }
+      attachDB(); // sin clave: se conecta directo y todos pujan en vivo
     }catch(e){ setSync("err", "Config inválida"); }
   }
 
@@ -509,43 +489,6 @@
     }, function(err){ setSync("err", "Error: " + err.code); });
   }
 
-  // Login con clave compartida (Firebase Email/Password).
-  // La 1ª persona define la clave (crea la cuenta); las demás deben coincidir.
-  function doAuth(clave, silent){
-    if(!clave || clave.length < 6){ if(!silent) claveErr("La clave debe tener al menos 6 caracteres."); return; }
-    claveBusy(true);
-    var auth = firebase.auth();
-    auth.signInWithEmailAndPassword(SHARED_EMAIL, clave)
-      .then(onOk)
-      .catch(function(e){
-        var code = e && e.code;
-        if(code === "auth/invalid-credential" || code === "auth/user-not-found" || code === "auth/wrong-password"){
-          // puede ser la 1ª vez (no existe la cuenta) → intentar crearla
-          auth.createUserWithEmailAndPassword(SHARED_EMAIL, clave)
-            .then(onOk)
-            .catch(function(e2){
-              var c2 = e2 && e2.code;
-              if(c2 === "auth/email-already-in-use"){
-                // la cuenta ya existe → clave equivocada (o carrera): reintentar login
-                auth.signInWithEmailAndPassword(SHARED_EMAIL, clave).then(onOk).catch(function(){
-                  claveBusy(false); if(!silent) claveErr("Clave incorrecta. Intenta de nuevo."); else showClave();
-                });
-              } else if(c2 === "auth/weak-password"){ claveBusy(false); claveErr("La clave debe tener al menos 6 caracteres.");
-              } else if(c2 === "auth/operation-not-allowed"){ claveBusy(false); claveErr("Falta activar Email/Password en Firebase (Authentication).");
-              } else { claveBusy(false); claveErr("No se pudo entrar: " + (c2 || "error")); }
-            });
-        } else if(code === "auth/operation-not-allowed" || code === "auth/configuration-not-found"){ claveBusy(false); claveErr("Falta activar Email/Password en Firebase (Authentication → Sign-in method).");
-        } else if(code === "auth/network-request-failed"){ claveBusy(false); claveErr("Sin conexión. Revisa tu internet.");
-        } else { claveBusy(false); if(!silent) claveErr("No se pudo entrar: " + (code || "error")); else showClave(); }
-      });
-    function onOk(){ claveBusy(false); try{ localStorage.setItem("subasta-clave", clave); }catch(_){ } }
-  }
-
-  // UI del modal de clave
-  function showClave(){ var b = document.getElementById("clavebox"); if(b){ b.hidden = false; var i = document.getElementById("clave-input"); if(i) setTimeout(function(){ i.focus(); }, 30); } }
-  function hideClave(){ var b = document.getElementById("clavebox"); if(b) b.hidden = true; }
-  function claveErr(msg){ var e = document.getElementById("clave-err"); if(e) e.textContent = msg || ""; }
-  function claveBusy(on){ var btn = document.getElementById("clave-btn"); if(btn){ btn.disabled = !!on; btn.textContent = on ? "Entrando…" : "Entrar"; } if(!on){} else claveErr(""); }
 
   function pushRoom(id){ if(online && dbRef){ var s = state.rooms[id]; dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" }).catch(writeErr); } }
   function pushLogRemote(entry){ if(online && dbRef){ var r = dbRef.child("log").push(entry); if(r && r.catch) r.catch(writeErr); } }
@@ -631,13 +574,6 @@
     try{ localStorage.setItem("subasta-theme", next); }catch(e){}
   });
   try{ var st = localStorage.getItem("subasta-theme"); if(st) document.documentElement.setAttribute("data-theme", st); }catch(e){}
-
-  // Modal de clave
-  var claveBtn = document.getElementById("clave-btn");
-  var claveInput = document.getElementById("clave-input");
-  function submitClave(){ doAuth(claveInput.value, false); }
-  if(claveBtn) claveBtn.addEventListener("click", submitClave);
-  if(claveInput) claveInput.addEventListener("keydown", function(ev){ if(ev.key === "Enter"){ ev.preventDefault(); submitClave(); } });
 
   render();
   initSync();
