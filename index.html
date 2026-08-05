@@ -139,6 +139,11 @@
   .card-actions{display:flex; gap:8px; flex-wrap:wrap}
   .hint{font-size:.78rem; color:var(--ink-faint)}
 
+  .diag{margin:0 0 18px; padding:9px 14px; border-radius:10px; background:var(--surface-2); border:1px solid var(--border);
+    color:var(--ink-soft); font-size:.8rem; font-weight:600; font-family:var(--sans); word-break:break-word}
+  .diag.ok{background:var(--save-wash); color:var(--accent-ink); border-color:transparent}
+  .diag.bad{background:var(--warn-wash); color:var(--warn); border-color:transparent}
+
   .note{margin-top:18px; padding:14px 16px; border-radius:var(--radius); font-size:.86rem; font-weight:600; display:none}
   .note.show{display:block}
   .note.warn{background:var(--warn-wash); color:var(--warn)}
@@ -208,6 +213,8 @@
     </div>
   </section>
 
+  <div class="diag" id="diag">Diagnóstico: iniciando…</div>
+
   <div class="grid" id="grid"></div>
 
   <div class="note" id="note"></div>
@@ -218,7 +225,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante.</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b9</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -449,10 +456,17 @@
   }
 
   // ---- Sincronización con Firebase ----
+  var BUILD = "b9";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
     document.getElementById("sync-txt").textContent = text;
+  }
+  function setDiag(msg, kind){
+    var el = document.getElementById("diag");
+    if(!el) return;
+    el.className = "diag " + (kind || "");
+    el.textContent = "["+BUILD+"] " + msg;
   }
 
   var dbAttached = false;
@@ -460,20 +474,22 @@
   function initSync(){
     if(!FIREBASE_CONFIG || typeof firebase === "undefined"){
       setSync("local", "Modo local · sala " + ROOM);
+      setDiag("Firebase no cargó (¿sin internet o bloqueado?). Modo local, no sincroniza.", "bad");
       return;
     }
     try{
       firebase.initializeApp(FIREBASE_CONFIG);
       dbRef = firebase.database().ref("subastas/" + ROOM);
+      setDiag("Firebase cargado. Conectando a la base de datos…");
       attachDB(); // sin clave: se conecta directo y todos pujan en vivo
-    }catch(e){ setSync("err", "Config inválida"); }
+    }catch(e){ setSync("err", "Config inválida"); setDiag("Error de configuración: " + (e && e.message || e), "bad"); }
   }
 
   function attachDB(){
     if(dbAttached) return; dbAttached = true;
     firebase.database().ref(".info/connected").on("value", function(snap){
-      if(snap.val() === true){ online = true; setSync("live", "En vivo · sala " + ROOM); }
-      else { online = false; setSync("err", "Sin conexión · reintentando…"); }
+      if(snap.val() === true){ online = true; setSync("live", "En vivo · sala " + ROOM); setDiag("Conectado ✓ · listo para pujar · sala " + ROOM, "ok"); }
+      else { online = false; setSync("err", "Sin conexión · reintentando…"); setDiag("SIN conexión a la base de datos. Reintentando… (revisa tu internet)", "bad"); }
     });
     dbRef.on("value", function(snap){
       applyingRemote = true;
@@ -486,11 +502,17 @@
       state.log = v.log ? Object.keys(v.log).sort().map(function(k){ return v.log[k]; }) : [];
       applyingRemote = false;
       render();
-    }, function(err){ setSync("err", "Error: " + err.code); });
+    }, function(err){ setSync("err", "Error: " + err.code); setDiag("La base de datos rechazó la LECTURA: " + err.code + " (revisa las reglas)", "bad"); });
   }
 
 
-  function pushRoom(id){ if(online && dbRef){ var s = state.rooms[id]; dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" }).catch(writeErr); } }
+  function pushRoom(id){
+    if(!(online && dbRef)){ setDiag("⚠ La puja NO se guardó: no hay conexión en vivo (offline).", "bad"); return; }
+    var s = state.rooms[id];
+    dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" })
+      .then(function(){ setDiag("✓ Puja guardada y sincronizada: " + id + " = " + (s.bid==null?"(flotante)":"$"+s.bid), "ok"); })
+      .catch(function(e){ setDiag("✗ La base de datos RECHAZÓ la puja: " + ((e&&e.code)||e) + " (revisa las reglas)", "bad"); writeErr(e); });
+  }
   function pushLogRemote(entry){ if(online && dbRef){ var r = dbRef.child("log").push(entry); if(r && r.catch) r.catch(writeErr); } }
 
   // ---- Eventos ----
