@@ -147,6 +147,14 @@
   .diag.ok{background:var(--save-wash); color:var(--accent-ink); border-color:transparent}
   .diag.bad{background:var(--warn-wash); color:var(--warn); border-color:transparent}
 
+  .closedbar{margin:0 0 18px; padding:13px 16px; border-radius:12px; background:#2b2620; color:#fff;
+    font-size:.92rem; font-weight:700; text-align:center; letter-spacing:.01em}
+  .closedbar[hidden]{display:none}
+  :root[data-theme="light"] .closedbar{background:#2b2620}
+  .card.locked{opacity:.96}
+  .card.locked .final{display:flex; align-items:center; gap:8px; font-size:.84rem; font-weight:700; color:var(--accent-ink);
+    background:var(--accent-wash); padding:9px 12px; border-radius:10px; margin-top:auto}
+
   .note{margin-top:18px; padding:14px 16px; border-radius:var(--radius); font-size:.86rem; font-weight:600; display:none}
   .note.show{display:block}
   .note.warn{background:var(--warn-wash); color:var(--warn)}
@@ -208,6 +216,7 @@
     <div class="stat check"><span class="k">Suma actual</span><span class="v mono" id="s-sum">$12,611.30 <span class="pill ok" id="s-check">✓ Cuadra</span></span></div>
     <div class="actions">
       <span class="sync" id="sync"><span class="dot"></span><span id="sync-txt">Conectando…</span></span>
+      <button class="primary tiny" id="btn-close" type="button">🔒 Cerrar subasta</button>
       <button class="ghost tiny" id="btn-share" type="button">🔗 Compartir link</button>
       <button class="ghost tiny" id="btn-theme" type="button">◐ Tema</button>
       <button class="ghost tiny" id="btn-example" type="button">Ver ejemplo</button>
@@ -217,6 +226,8 @@
   </section>
 
   <div class="diag" id="diag">Diagnóstico: iniciando…</div>
+
+  <div class="closedbar" id="closedbar" hidden>🔒 Subasta CERRADA — estos son los precios finales. Nadie puede pujar hasta reabrirla.</div>
 
   <div class="grid" id="grid"></div>
 
@@ -228,7 +239,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b10</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b11</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -356,6 +367,11 @@
     check.className = "pill " + (ok ? "ok" : "bad");
     check.textContent = ok ? "✓ Cuadra" : "≠ Revisar";
 
+    var closedbar = document.getElementById("closedbar");
+    if(closedbar) closedbar.hidden = !(state.closed === true);
+    var btnClose = document.getElementById("btn-close");
+    if(btnClose) btnClose.textContent = (state.closed === true) ? "🔓 Reabrir subasta" : "🔒 Cerrar subasta";
+
     grid.innerHTML = "";
     ROOMS.forEach(function(r){
       var s = state.rooms[r.id];
@@ -368,7 +384,8 @@
       var occPh = isSingle ? "Ej. Zebede" : "Ej. Ana y Luis";
 
       var card = document.createElement("div");
-      card.className = "card " + (isFixed ? "fixed" : "floating");
+      var locked = state.closed === true;
+      card.className = "card " + (isFixed ? "fixed" : "floating") + (locked ? " locked" : "");
       var tags = r.tags.map(function(t){ return '<span class="tag'+(t.s?' strong':'')+'">'+t.t+'</span>'; }).join("");
       var deltaCls = Math.abs(d) < 0.005 ? "flat" : (d < 0 ? "save" : "prem");
       var deltaTxt = Math.abs(d) < 0.005 ? "Al precio base"
@@ -394,21 +411,23 @@
             '<div class="proom"><span class="amt">'+money(room)+'</span><br><span class="lab">'+roomLab+'</span></div>'+
           '</div>'+
           holder+
-          '<div class="controls">'+
-            '<div class="field occ"><label for="occ-'+r.id+'">'+occLab+'</label>'+
-              '<input type="text" id="occ-'+r.id+'" value="'+escapeAttr(s.occ||"")+'" placeholder="'+occPh+'" autocomplete="off"></div>'+
-            '<div class="field"><label for="bid-'+r.id+'">'+minTxt+'</label>'+
-              '<div class="bid-row"><div class="stepper">'+
-                '<button type="button" data-dec="'+r.id+'" aria-label="Bajar">–</button>'+
-                '<input type="number" id="bid-'+r.id+'" value="" placeholder="'+(isFixed?'más de '+s.bid:'tu puja')+'" step="'+STEP+'" min="0" inputmode="decimal">'+
-                '<button type="button" data-inc="'+r.id+'" aria-label="Subir">+</button>'+
-              '</div></div>'+
-              '<span class="hint">'+(isFixed?'Para quedártelo, puja MÁS de '+money(s.bid)+'.':'Haz tu puja para reservarlo. Solo sube.')+'</span>'+
-            '</div>'+
-            '<div class="card-actions">'+
-              '<button type="button" class="primary tiny" data-bid="'+r.id+'">'+(isFixed?"Pujar más alto":"Pujar")+'</button>'+
-            '</div>'+
-          '</div>'+
+          (locked
+            ? '<div class="final">🔒 Precio final: '+money(person)+' / persona'+(isFixed?' · '+esc(s.occ||"—"):' · sin dueño')+'</div>'
+            : '<div class="controls">'+
+                '<div class="field occ"><label for="occ-'+r.id+'">'+occLab+'</label>'+
+                  '<input type="text" id="occ-'+r.id+'" value="'+escapeAttr(s.occ||"")+'" placeholder="'+occPh+'" autocomplete="off"></div>'+
+                '<div class="field"><label for="bid-'+r.id+'">'+minTxt+'</label>'+
+                  '<div class="bid-row"><div class="stepper">'+
+                    '<button type="button" data-dec="'+r.id+'" aria-label="Bajar">–</button>'+
+                    '<input type="number" id="bid-'+r.id+'" value="" placeholder="'+(isFixed?'más de '+s.bid:'tu puja')+'" step="'+STEP+'" min="0" inputmode="decimal">'+
+                    '<button type="button" data-inc="'+r.id+'" aria-label="Subir">+</button>'+
+                  '</div></div>'+
+                  '<span class="hint">'+(isFixed?'Para quedártelo, puja MÁS de '+money(s.bid)+'.':'Haz tu puja para reservarlo. Solo sube.')+'</span>'+
+                '</div>'+
+                '<div class="card-actions">'+
+                  '<button type="button" class="primary tiny" data-bid="'+r.id+'">'+(isFixed?"Pujar más alto":"Pujar")+'</button>'+
+                '</div>'+
+              '</div>')+
         '</div>';
       grid.appendChild(card);
     });
@@ -463,7 +482,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b10";
+  var BUILD = "b11";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -507,6 +526,7 @@
         state.rooms[r.id] = { bid: (typeof rr.bid === "number" ? rr.bid : null), occ: rr.occ || "" };
       });
       state.log = v.log ? Object.keys(v.log).sort().map(function(k){ return v.log[k]; }) : [];
+      state.closed = (v.closed === true);
       applyingRemote = false;
       render();
     }, function(err){ setSync("err", "Error: " + err.code); setDiag("La base de datos rechazó la LECTURA: " + err.code + " (revisa las reglas)", "bad"); });
@@ -554,6 +574,7 @@
       input.value = Math.max(0, v + (inc ? STEP : -STEP));
     }
     if(bidId){
+      if(state.closed === true){ toast("La subasta está cerrada. No se puede pujar.", "warn"); return; }
       if(FIREBASE_CONFIG && !online){ toast("Sin conexión en vivo todavía. Espera a que arriba diga «En vivo».", "warn"); return; }
       var input2 = document.getElementById("bid-"+bidId);
       var amount = parseFloat(input2.value);
@@ -566,10 +587,18 @@
     }
   });
 
+  document.getElementById("btn-close").addEventListener("click", function(){
+    var willClose = !(state.closed === true);
+    if(willClose && !confirm("¿Cerrar la subasta para TODOS? Se congelan los precios actuales y nadie podrá pujar hasta reabrir.")) return;
+    if(!willClose && !confirm("¿Reabrir la subasta? Todos podrán volver a pujar.")) return;
+    var e = makeLog(willClose ? '🔒 <b>Subasta cerrada.</b> Precios finales congelados.' : '🔓 <b>Subasta reabierta.</b> Se puede pujar de nuevo.');
+    if(online && dbRef){ dbRef.child("closed").set(willClose); pushLogRemote(e); }
+    else { state.closed = willClose; state.log.push(e); render(); }
+  });
   document.getElementById("btn-reset").addEventListener("click", function(){
     if(!confirm("¿Reiniciar toda la subasta para TODOS? Se borran pujas, ocupantes y registro.")) return;
     ROOMS.forEach(function(r){ state.rooms[r.id] = {bid:null, occ:""}; });
-    state.log = [];
+    state.log = []; state.closed = false;
     if(online && dbRef){ dbRef.set(null); }
     render();
   });
