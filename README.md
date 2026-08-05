@@ -7,10 +7,13 @@ siempre cuadrando en el total exacto de **$12,611.30**.
 
 - **10 personas** en **6 espacios**: 4 cuartos de pareja + 2 camas del camarote (individuales).
 - **Base por persona:** $1,261.13 (12,611.30 ÷ 10).
-- Cada quien **fija su puja por persona** en el espacio que quiere.
-- Cuando alguien fija una puja, ese espacio queda **bloqueado** en ese precio, y los
-  espacios que **aún no tienen puja (flotantes)** se reparten el resto y **bajan de precio**.
+- Cada quien **puja por persona** en el espacio que quiere. Es una subasta **que solo sube**:
+  para quedarte con un cuarto debes **superar la puja actual** (si ya tiene dueño).
+- El cuarto con puja queda **bloqueado** en ese precio; los espacios **sin dueño** se
+  reparten el resto y **bajan de precio**.
 - El total **siempre** suma $12,611.30.
+- **En tiempo real:** funciona sobre Firebase; todos ven las pujas al instante. Las pujas
+  usan transacciones atómicas (a prueba de dos personas pujando a la vez).
 
 ### Ejemplo
 Si la pareja del King Principal de Arriba fija **$1,550/persona** ($3,100 el cuarto),

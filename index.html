@@ -125,6 +125,9 @@
   .delta.prem{color:var(--premium)}
   .delta.flat{color:var(--ink-faint)}
 
+  .holder{font-size:.82rem; color:var(--ink-faint); padding:2px 0}
+  .holder.held{color:var(--ink-soft)}
+  .holder b{color:var(--ink)}
   .controls{display:flex; flex-direction:column; gap:10px; margin-top:auto}
   .field{display:flex; flex-direction:column; gap:5px}
   .field label{font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:600}
@@ -194,7 +197,7 @@
   <header class="hero">
     <div class="eyebrow">Casa Ski 2027 · Subasta dinámica · 10 personas</div>
     <h1>¿Quién se queda con cuál cuarto?</h1>
-    <p class="lede">4 cuartos van en pareja y el camarote por cama. Cuando alguien <b>fija su puja</b> por persona, ese espacio queda bloqueado en ese precio y los que aún no tienen puja bajan, repartiéndose el resto. El total siempre cuadra en <b>$12,611.30</b>.</p>
+    <p class="lede">4 cuartos van en pareja y el camarote por cama. Cada quien <b>puja</b> por persona; para quedarte con un cuarto debes <b>superar la puja actual</b> (solo sube). Los cuartos sin dueño bajan, repartiéndose el resto. El total siempre cuadra en <b>$12,611.30</b>.</p>
   </header>
 
   <section class="summary" id="summary" aria-label="Resumen de la subasta">
@@ -225,7 +228,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b9</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b10</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -370,8 +373,12 @@
       var deltaCls = Math.abs(d) < 0.005 ? "flat" : (d < 0 ? "save" : "prem");
       var deltaTxt = Math.abs(d) < 0.005 ? "Al precio base"
         : (d < 0 ? "Ahorras " + money(-d) + " / persona" : "Pagas " + money(d) + " / persona de más");
-      var stateP = isFixed ? '<span class="pill state-pill fx">Puja fija</span>' : '<span class="pill state-pill fl">Flotante</span>';
-      var bidVal = isFixed ? s.bid : "";
+      var stateP = isFixed ? '<span class="pill state-pill fx">Con dueño</span>' : '<span class="pill state-pill fl">Libre</span>';
+      var minTxt = isFixed ? "Supera "+money(s.bid) : "Tu puja / persona";
+
+      var holder = isFixed
+        ? '<div class="holder held">🏷️ Lo tiene <b>'+esc(s.occ||"—")+'</b> · pujó '+money(s.bid)+' / persona</div>'
+        : '<div class="holder">Sin dueño todavía · '+(isSingle?'esta cama flota':'este cuarto flota')+' en '+money(person)+' / persona</div>';
 
       card.innerHTML =
         '<div class="photo">'+
@@ -386,20 +393,20 @@
               '<span class="delta '+deltaCls+'">'+deltaTxt+'</span></div>'+
             '<div class="proom"><span class="amt">'+money(room)+'</span><br><span class="lab">'+roomLab+'</span></div>'+
           '</div>'+
+          holder+
           '<div class="controls">'+
             '<div class="field occ"><label for="occ-'+r.id+'">'+occLab+'</label>'+
               '<input type="text" id="occ-'+r.id+'" value="'+escapeAttr(s.occ||"")+'" placeholder="'+occPh+'" autocomplete="off"></div>'+
-            '<div class="field"><label for="bid-'+r.id+'">Puja por persona</label>'+
+            '<div class="field"><label for="bid-'+r.id+'">'+minTxt+'</label>'+
               '<div class="bid-row"><div class="stepper">'+
                 '<button type="button" data-dec="'+r.id+'" aria-label="Bajar">–</button>'+
-                '<input type="number" id="bid-'+r.id+'" value="'+bidVal+'" placeholder="por persona" step="'+STEP+'" min="0" inputmode="decimal">'+
+                '<input type="number" id="bid-'+r.id+'" value="" placeholder="'+(isFixed?'más de '+s.bid:'tu puja')+'" step="'+STEP+'" min="0" inputmode="decimal">'+
                 '<button type="button" data-inc="'+r.id+'" aria-label="Subir">+</button>'+
               '</div></div>'+
-              (isFixed ? '' : '<span class="hint">Sin puja: '+(isSingle?'esta cama flota':'este cuarto flota')+' en '+money(person)+' / persona.</span>')+
+              '<span class="hint">'+(isFixed?'Para quedártelo, puja MÁS de '+money(s.bid)+'.':'Haz tu puja para reservarlo. Solo sube.')+'</span>'+
             '</div>'+
             '<div class="card-actions">'+
-              '<button type="button" class="primary tiny" data-fix="'+r.id+'">'+(isFixed?"Actualizar puja":"Fijar puja")+'</button>'+
-              (isFixed ? '<button type="button" class="ghost tiny" data-free="'+r.id+'">Soltar (flotar)</button>' : '')+
+              '<button type="button" class="primary tiny" data-bid="'+r.id+'">'+(isFixed?"Pujar más alto":"Pujar")+'</button>'+
             '</div>'+
           '</div>'+
         '</div>';
@@ -456,7 +463,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b9";
+  var BUILD = "b10";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -506,58 +513,56 @@
   }
 
 
-  function pushRoom(id){
-    if(!(online && dbRef)){ setDiag("⚠ La puja NO se guardó: no hay conexión en vivo (offline).", "bad"); return; }
-    var s = state.rooms[id];
-    dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" })
-      .then(function(){ setDiag("✓ Puja guardada y sincronizada: " + id + " = " + (s.bid==null?"(flotante)":"$"+s.bid), "ok"); })
-      .catch(function(e){ setDiag("✗ La base de datos RECHAZÓ la puja: " + ((e&&e.code)||e) + " (revisa las reglas)", "bad"); writeErr(e); });
-  }
   function pushLogRemote(entry){ if(online && dbRef){ var r = dbRef.child("log").push(entry); if(r && r.catch) r.catch(writeErr); } }
+
+  // Pujar: SOLO SUBE. Usa una transacción atómica: solo se acepta si el monto
+  // supera la puja actual (a prueba de dos personas pujando a la vez).
+  function bidRoom(id, amount, occ){
+    var rm = roomById(id);
+    if(!(online && dbRef)){
+      // modo local (un solo dispositivo)
+      var cur = (typeof state.rooms[id].bid === "number") ? state.rooms[id].bid : 0;
+      if(amount <= cur){ toast("Debes pujar más de " + money(cur) + ".", "warn"); return; }
+      state.rooms[id].bid = amount; state.rooms[id].occ = occ || state.rooms[id].occ || "";
+      state.log.push(makeLog('<b>'+esc(occ||"Alguien")+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
+      setDiag("(local) Puja aplicada: " + rm.name + " = $" + amount, "ok");
+      render(); return;
+    }
+    dbRef.child("rooms/"+id).transaction(function(cur){
+      cur = cur || {};
+      var c = (typeof cur.bid === "number") ? cur.bid : 0;
+      if(amount > c){ return { bid: amount, occ: occ || cur.occ || "" }; }
+      return; // aborta: no supera la puja actual
+    }, function(err, committed){
+      if(err){ setDiag("✗ Error al pujar: " + (err.message || err), "bad"); toast("Error al pujar. Intenta otra vez.", "warn"); return; }
+      if(!committed){ setDiag("✗ Puja rechazada: alguien ya pujó igual o más.", "bad"); toast("Alguien ya pujó igual o más alto. Sube tu monto.", "warn"); return; }
+      setDiag("✓ Puja registrada: " + rm.name + " = $" + amount + (occ?" ("+occ+")":""), "ok");
+      pushLogRemote(makeLog('<b>'+esc(occ||"Alguien")+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
+    });
+  }
 
   // ---- Eventos ----
   grid.addEventListener("click", function(ev){
     var el = ev.target.closest("button"); if(!el) return;
     var inc = el.getAttribute("data-inc"), dec = el.getAttribute("data-dec");
-    var fix = el.getAttribute("data-fix"), free = el.getAttribute("data-free");
+    var bidId = el.getAttribute("data-bid");
 
     if(inc || dec){
       var id = inc || dec, input = document.getElementById("bid-"+id);
-      var v = parseFloat(input.value); if(isNaN(v)) v = BASE_PERSON;
+      var cur0 = (typeof state.rooms[id].bid === "number") ? state.rooms[id].bid + STEP : BASE_PERSON;
+      var v = parseFloat(input.value); if(isNaN(v)) v = cur0;
       input.value = Math.max(0, v + (inc ? STEP : -STEP));
     }
-    if(fix){
-      var input2 = document.getElementById("bid-"+fix);
-      var v2 = parseFloat(input2.value);
-      if(isNaN(v2) || v2 < 0){ toast("Escribe tu puja por persona (un número) antes de fijar.", "warn"); input2.focus(); return; }
-      if(FIREBASE_CONFIG && !online){ toast("Sin conexión en vivo todavía. Espera a que diga «En vivo» arriba.", "warn"); }
-      var was = state.rooms[fix].bid;
-      state.rooms[fix].bid = v2;
-      state.rooms[fix].occ = document.getElementById("occ-"+fix).value;
-      var rm = roomById(fix);
-      var who = state.rooms[fix].occ ? state.rooms[fix].occ : "Una pareja";
-      var entry;
-      if(was === null || was === undefined) entry = makeLog('<b>'+esc(who)+'</b> fija <b>'+rm.name+'</b> en '+money(v2)+' / persona.');
-      else if(was !== v2) entry = makeLog('<b>'+esc(who)+'</b> ajusta <b>'+rm.name+'</b>: '+money(was)+' → '+money(v2)+' / persona.');
-      if(entry){ state.log.push(entry); pushLogRemote(entry); }
-      pushRoom(fix); render();
-    }
-    if(free){
-      var rm2 = roomById(free);
-      var who2 = state.rooms[free].occ ? state.rooms[free].occ : "Alguien";
-      state.rooms[free].bid = null;
-      var e2 = makeLog('<b>'+esc(who2)+'</b> suelta <b>'+rm2.name+'</b> (vuelve a flotar).');
-      state.log.push(e2); pushLogRemote(e2);
-      pushRoom(free); render();
-    }
-  });
-
-  grid.addEventListener("input", function(ev){
-    var t = ev.target;
-    if(t.id && t.id.indexOf("occ-")===0){
-      var id = t.id.slice(4);
-      state.rooms[id].occ = t.value; save();
-      if(online && dbRef){ clearTimeout(occTimers[id]); occTimers[id] = setTimeout(function(){ dbRef.child("rooms/"+id+"/occ").set(t.value); }, 500); }
+    if(bidId){
+      if(FIREBASE_CONFIG && !online){ toast("Sin conexión en vivo todavía. Espera a que arriba diga «En vivo».", "warn"); return; }
+      var input2 = document.getElementById("bid-"+bidId);
+      var amount = parseFloat(input2.value);
+      if(isNaN(amount) || amount <= 0){ toast("Escribe tu puja por persona (un número) antes de pujar.", "warn"); input2.focus(); return; }
+      var occVal = document.getElementById("occ-"+bidId).value;
+      var curBid = (typeof state.rooms[bidId].bid === "number") ? state.rooms[bidId].bid : 0;
+      if(amount <= curBid){ toast("Para quedarte con este cuarto debes pujar MÁS de " + money(curBid) + ".", "warn"); input2.focus(); return; }
+      bidRoom(bidId, amount, occVal);
+      input2.value = "";
     }
   });
 
@@ -572,12 +577,15 @@
     state.log = []; if(online && dbRef){ dbRef.child("log").set(null); } render();
   });
   document.getElementById("btn-example").addEventListener("click", function(){
-    ROOMS.forEach(function(r){ state.rooms[r.id].bid = null; if(online) pushRoom(r.id); });
-    state.rooms["principal-arriba"].bid = 1550;
-    if(!state.rooms["principal-arriba"].occ) state.rooms["principal-arriba"].occ = "Ejemplo";
-    var e = makeLog('<b>Ejemplo</b>: principal de arriba en '+money(1550)+' / persona; los otros flotan.');
-    state.log.push(e); pushLogRemote(e);
-    pushRoom("principal-arriba"); render();
+    var e = makeLog('<b>Ejemplo</b>: principal de arriba a '+money(1550)+' / persona; los otros flotan.');
+    if(online && dbRef){
+      dbRef.child("rooms").set({ "principal-arriba": { bid:1550, occ:"Ejemplo" } });
+      pushLogRemote(e);
+    } else {
+      ROOMS.forEach(function(r){ state.rooms[r.id] = {bid:null, occ:""}; });
+      state.rooms["principal-arriba"] = { bid:1550, occ:"Ejemplo" };
+      state.log.push(e); render();
+    }
   });
 
   document.getElementById("btn-share").addEventListener("click", function(){
