@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Subasta de Cuartos · Casa Compartida</title>
+<title>Subasta de Cuartos · Casa Ski 2027</title>
 <style>
   :root{
     --bg:#FAF8F4; --surface:#FFFFFF; --surface-2:#F2EFE8; --border:#E4DFD5;
@@ -56,13 +56,11 @@
   }
   .wrap{max-width:1120px; margin:0 auto; padding:28px 20px 80px}
 
-  /* Header */
   header.hero{padding:12px 0 22px}
   .eyebrow{font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-ink); font-weight:700}
   h1{font-family:var(--serif); font-weight:700; font-size:clamp(1.8rem,4.5vw,2.7rem); line-height:1.08; margin:.28em 0 .18em; text-wrap:balance}
   .lede{color:var(--ink-soft); max-width:60ch; margin:0}
 
-  /* Summary bar */
   .summary{
     position:sticky; top:0; z-index:20; margin:18px 0 26px;
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
@@ -77,7 +75,14 @@
   .pill{display:inline-flex; align-items:center; gap:6px; font-size:.72rem; font-weight:700; padding:3px 9px; border-radius:999px; letter-spacing:.02em}
   .pill.ok{background:var(--save-wash); color:var(--accent-ink)}
   .pill.bad{background:var(--warn-wash); color:var(--warn)}
-  .summary .actions{grid-column:1/-1; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:10px; margin-top:2px}
+  .summary .actions{grid-column:1/-1; display:flex; gap:8px; flex-wrap:wrap; align-items:center; border-top:1px solid var(--border); padding-top:10px; margin-top:2px}
+
+  .sync{display:inline-flex; align-items:center; gap:7px; font-size:.76rem; font-weight:700; padding:5px 11px; border-radius:999px; background:var(--surface-2); color:var(--ink-faint); margin-right:auto}
+  .sync .dot{width:8px; height:8px; border-radius:50%; background:var(--ink-faint); flex:none}
+  .sync.live{background:var(--save-wash); color:var(--accent-ink)}
+  .sync.live .dot{background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+  .sync.err{background:var(--warn-wash); color:var(--warn)}
+  .sync.err .dot{background:var(--warn)}
 
   button{font-family:var(--sans); cursor:pointer; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--ink); font-weight:600; font-size:.85rem; padding:8px 12px; transition:background .12s,border-color .12s,transform .05s}
   button:hover{border-color:var(--accent)}
@@ -85,24 +90,24 @@
   button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
   button.ghost{background:transparent}
-  button.tiny{padding:5px 9px; font-size:.78rem}
+  button.tiny{padding:6px 10px; font-size:.78rem}
 
-  /* Rooms grid */
-  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px}
-  .card{
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-    box-shadow:var(--shadow); padding:18px; display:flex; flex-direction:column; gap:14px; position:relative; overflow:hidden;
-  }
-  .card.featured{grid-column:1/-1; border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
-  .card.featured::before{content:""; position:absolute; inset:0 auto 0 0; width:4px; background:var(--accent)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; align-items:stretch}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:0; display:flex; flex-direction:column; position:relative; overflow:hidden}
   .card.fixed{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}
-  .card.floating{}
-  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
-  .rname{font-family:var(--serif); font-size:1.18rem; font-weight:700; line-height:1.15; margin:0}
-  .rdesc{color:var(--ink-soft); font-size:.88rem; margin:3px 0 0}
-  .state-pill{flex:none}
-  .state-pill.fx{background:var(--accent-wash); color:var(--accent-ink)}
-  .state-pill.fl{background:var(--surface-2); color:var(--ink-faint)}
+
+  .photo{position:relative; width:100%; aspect-ratio:16/10; background:var(--surface-2); flex:none}
+  .photo img{width:100%; height:100%; object-fit:cover; display:block}
+  .photo .grad{position:absolute; inset:0; background:linear-gradient(to top, rgba(15,12,8,.72), rgba(15,12,8,.12) 46%, rgba(15,12,8,.02) 70%)}
+  .photo .ptitle{position:absolute; left:16px; right:16px; bottom:12px; z-index:2}
+  .photo .ptitle .rname{color:#fff; font-family:var(--serif); font-size:1.16rem; font-weight:700; line-height:1.14; margin:0; text-shadow:0 1px 8px rgba(0,0,0,.55); text-wrap:balance}
+  .photo .ptitle .rdesc{color:rgba(255,255,255,.9); font-size:.8rem; margin:3px 0 0; text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .photo .state-pill{position:absolute; top:12px; right:12px; z-index:2; backdrop-filter:saturate(1.2) blur(2px)}
+
+  .body{padding:15px 17px 17px; display:flex; flex-direction:column; gap:13px; flex:1}
+  .state-pill{flex:none; box-shadow:0 1px 4px rgba(0,0,0,.18)}
+  .state-pill.fx{background:var(--accent); color:#fff}
+  .state-pill.fl{background:rgba(255,255,255,.92); color:#4a4438}
 
   .tags{display:flex; flex-wrap:wrap; gap:6px}
   .tag{font-size:.7rem; font-weight:600; color:var(--ink-soft); background:var(--surface-2); border:1px solid var(--border); padding:3px 8px; border-radius:999px}
@@ -120,14 +125,10 @@
   .delta.prem{color:var(--premium)}
   .delta.flat{color:var(--ink-faint)}
 
-  .controls{display:flex; flex-direction:column; gap:10px}
+  .controls{display:flex; flex-direction:column; gap:10px; margin-top:auto}
   .field{display:flex; flex-direction:column; gap:5px}
   .field label{font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); font-weight:600}
-  .occ input{width:100%}
-  input[type="text"],input[type="number"]{
-    font-family:var(--sans); font-size:.95rem; color:var(--ink); background:var(--bg);
-    border:1px solid var(--border); border-radius:10px; padding:9px 11px; width:100%;
-  }
+  input[type="text"],input[type="number"]{font-family:var(--sans); font-size:.95rem; color:var(--ink); background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 11px; width:100%}
   input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
   .bid-row{display:flex; gap:8px; align-items:stretch}
   .bid-row .stepper{display:flex; align-items:stretch; border:1px solid var(--border); border-radius:10px; overflow:hidden; flex:1}
@@ -137,17 +138,16 @@
   .bid-row .stepper button:hover{background:var(--accent-wash)}
   .card-actions{display:flex; gap:8px; flex-wrap:wrap}
   .hint{font-size:.78rem; color:var(--ink-faint)}
-  .holder{font-size:.82rem; color:var(--ink-soft)}
-  .holder b{color:var(--ink)}
 
-  .note{margin-top:18px; padding:14px 16px; border-radius:var(--radius); background:var(--warn-wash); color:var(--warn); font-size:.86rem; font-weight:600; display:none}
+  .note{margin-top:18px; padding:14px 16px; border-radius:var(--radius); font-size:.86rem; font-weight:600; display:none}
   .note.show{display:block}
+  .note.warn{background:var(--warn-wash); color:var(--warn)}
+  .note.info{background:var(--accent-wash); color:var(--accent-ink)}
 
-  /* Log */
   .log-sec{margin-top:34px}
   .log-sec h2{font-family:var(--serif); font-size:1.3rem; margin:0 0 4px}
   .log-sec .sub{color:var(--ink-soft); font-size:.86rem; margin:0 0 14px}
-  .log{display:flex; flex-direction:column; gap:0; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--surface)}
+  .log{display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--surface)}
   .log-item{display:flex; gap:12px; align-items:baseline; padding:10px 14px; border-bottom:1px solid var(--border); font-size:.86rem}
   .log-item:last-child{border-bottom:none}
   .log-item .t{color:var(--ink-faint); font-size:.76rem; white-space:nowrap; min-width:64px}
@@ -160,6 +160,7 @@
   @media (max-width:520px){
     .wrap{padding:20px 14px 64px}
     .pp .amt{font-size:1.5rem}
+    .sync{margin-right:0}
   }
 </style>
 </head>
@@ -178,8 +179,10 @@
     <div class="stat"><span class="k">Restante flotante</span><span class="v mono" id="s-rem">$12,611.30</span></div>
     <div class="stat check"><span class="k">Suma actual</span><span class="v mono" id="s-sum">$12,611.30 <span class="pill ok" id="s-check">✓ Cuadra</span></span></div>
     <div class="actions">
+      <span class="sync" id="sync"><span class="dot"></span><span id="sync-txt">Conectando…</span></span>
+      <button class="ghost tiny" id="btn-share" type="button">🔗 Compartir link</button>
       <button class="ghost tiny" id="btn-theme" type="button">◐ Tema</button>
-      <button class="ghost tiny" id="btn-example" type="button">Ver ejemplo (principal a $1,550)</button>
+      <button class="ghost tiny" id="btn-example" type="button">Ver ejemplo</button>
       <button class="ghost tiny" id="btn-clearlog" type="button">Limpiar registro</button>
       <button class="ghost tiny" id="btn-reset" type="button">Reiniciar todo</button>
     </div>
@@ -195,94 +198,117 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. Los precios se guardan en este dispositivo automáticamente.</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante.</footer>
 </div>
+
+<!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 
 <script>
 (function(){
   "use strict";
+
+  /* ===========================================================================
+     CONFIG DE FIREBASE — pega aquí el objeto que te da Firebase.
+     Mientras esté en null, la app funciona en modo LOCAL (sin sincronizar).
+     Ejemplo del formato:
+       var FIREBASE_CONFIG = {
+         apiKey: "AIza...",
+         authDomain: "tu-proyecto.firebaseapp.com",
+         databaseURL: "https://tu-proyecto-default-rtdb.firebaseio.com",
+         projectId: "tu-proyecto",
+         appId: "1:123:web:abc"
+       };
+     =========================================================================== */
+  var FIREBASE_CONFIG = null;
+
   var TOTAL = 12611.30;
   var N_PEOPLE = 10;
   var BASE_PERSON = TOTAL / N_PEOPLE; // 1261.13
   var STEP = 25;
 
+  // sala: permite varias subastas con ?sala=xxxx en la URL
+  var ROOM = (new URLSearchParams(location.search)).get("sala") || "casa-ski-2027";
+
   // 4 cuartos de pareja + 2 camas individuales del camarote = 10 personas
   var ROOMS = [
-    {id:"principal-arriba", people:2, featured:true, name:"King Principal — Arriba", desc:"La grande. Baño privado y closet.",
+    {id:"principal-arriba", people:2, img:"img/principal-arriba.jpg", name:"King Principal — Arriba", desc:"La grande. Baño privado y closet.",
       tags:[{t:"Arriba",s:false},{t:"La más amplia",s:true},{t:"Baño privado",s:true},{t:"Closet",s:true}]},
-    {id:"principal-abajo", people:2, name:"King Principal — Abajo", desc:"Bajando la escalera a la izquierda. Baño privado y closet.",
+    {id:"principal-abajo", people:2, img:"img/principal-abajo.jpg", name:"King Principal — Abajo", desc:"Bajando la escalera a la izquierda. Baño privado y closet.",
       tags:[{t:"Abajo",s:false},{t:"Baño privado",s:true},{t:"Closet",s:true}]},
-    {id:"esquina", people:2, name:"King Esquina — Abajo", desc:"Al fondo, en la esquina. Baño privado, sin closet.",
+    {id:"esquina", people:2, img:"img/esquina.jpg", name:"King Esquina — Abajo", desc:"Al fondo, en la esquina. Baño privado, sin closet.",
       tags:[{t:"Abajo",s:false},{t:"Baño privado",s:true},{t:"Sin closet",s:false}]},
-    {id:"king-derecha", people:2, name:"King Derecha — Abajo", desc:"Bajando la escalera a la derecha. Closet. Baño compartido con el camarote.",
+    {id:"king-derecha", people:2, img:"img/king-derecha.jpg", name:"King Derecha — Abajo", desc:"Bajando la escalera a la derecha. Closet. Baño compartido con el camarote.",
       tags:[{t:"Abajo",s:false},{t:"Closet",s:true},{t:"Baño compartido",s:false}]},
-    {id:"camarote-abajo", people:1, single:true, name:"Camarote — Cama de abajo", desc:"Litera, cama de abajo. Baño compartido con el King derecha. Sin closet.",
+    {id:"camarote-abajo", people:1, single:true, img:"img/camarote.jpg", name:"Camarote — Cama de abajo", desc:"Litera, cama de abajo. Baño compartido con el King derecha. Sin closet.",
       tags:[{t:"Abajo",s:false},{t:"1 persona",s:true},{t:"Baño compartido",s:false},{t:"Sin closet",s:false}]},
-    {id:"camarote-arriba", people:1, single:true, name:"Camarote — Cama de arriba", desc:"Litera, cama de arriba. Baño compartido con el King derecha. Sin closet.",
+    {id:"camarote-arriba", people:1, single:true, img:"img/camarote.jpg", name:"Camarote — Cama de arriba", desc:"Litera, cama de arriba. Baño compartido con el King derecha. Sin closet.",
       tags:[{t:"Abajo",s:false},{t:"1 persona",s:true},{t:"Baño compartido",s:false},{t:"Sin closet",s:false}]}
   ];
 
-  var STORE_KEY = "subasta-cuartos-v1";
+  var STORE_KEY = "subasta-cuartos-" + ROOM;
   var state = load() || { rooms:{}, log:[] };
   ROOMS.forEach(function(r){ if(!state.rooms[r.id]) state.rooms[r.id] = {bid:null, occ:""}; });
 
+  // Sincronización
+  var online = false, dbRef = null, applyingRemote = false;
+  var occTimers = {};
+
   var fmt = new Intl.NumberFormat("en-US",{minimumFractionDigits:2, maximumFractionDigits:2});
   function money(n){ return "$" + fmt.format(n); }
-
   function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
   function load(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)); }catch(e){ return null; } }
 
-  // ---- Core math ----
+  // ---- Matemática ----
   function compute(){
     var fixed = [], floatR = [];
     ROOMS.forEach(function(r){
       var s = state.rooms[r.id];
       if(s.bid !== null && s.bid !== undefined && !isNaN(s.bid)) fixed.push(r); else floatR.push(r);
     });
-    var sumFixed = 0, floatPeople = 0;   // sumFixed = dinero ya comprometido por pujas
+    var sumFixed = 0, floatPeople = 0;
     fixed.forEach(function(r){ sumFixed += state.rooms[r.id].bid * r.people; });
     floatR.forEach(function(r){ floatPeople += r.people; });
     var remainder = TOTAL - sumFixed;
 
-    var costRoom = {}, perPerson = {};   // costRoom = costo del espacio (según nº de personas)
+    var costRoom = {}, perPerson = {};
     var normalized = false, warnNeg = false;
 
     if(floatPeople > 0){
-      var fpp = remainder / floatPeople; // precio por persona de los flotantes
+      var fpp = remainder / floatPeople;
       if(fpp < 0) warnNeg = true;
       fixed.forEach(function(r){ perPerson[r.id] = state.rooms[r.id].bid; });
       floatR.forEach(function(r){ perPerson[r.id] = fpp; });
     } else {
-      // Todos con puja: ajuste igual por persona para cuadrar exacto.
       var shift = (sumFixed - TOTAL) / N_PEOPLE;
       if(Math.abs(sumFixed - TOTAL) > 0.005) normalized = true;
       fixed.forEach(function(r){ perPerson[r.id] = state.rooms[r.id].bid - shift; });
     }
     ROOMS.forEach(function(r){ costRoom[r.id] = perPerson[r.id] * r.people; });
 
-    // Reconciliación de centavos a nivel de espacio → la suma cuadra exacta a TOTAL.
     var cents = {}, sumCents = 0;
     ROOMS.forEach(function(r){ cents[r.id] = Math.round(costRoom[r.id] * 100); sumCents += cents[r.id]; });
     var diff = Math.round(TOTAL * 100) - sumCents;
-    if(diff !== 0){
-      var pool = floatR.length ? floatR : ROOMS;
-      cents[pool[0].id] += diff;
-    }
+    if(diff !== 0){ var pool = floatR.length ? floatR : ROOMS; cents[pool[0].id] += diff; }
+
     var finalRoom = {}, finalPerson = {};
     ROOMS.forEach(function(r){ finalRoom[r.id] = cents[r.id]/100; finalPerson[r.id] = (cents[r.id]/100)/r.people; });
 
-    return {
-      fixed:fixed, floatR:floatR, sumFixed:sumFixed, remainder:remainder,
-      finalRoom:finalRoom, finalPerson:finalPerson, normalized:normalized, warnNeg:warnNeg
-    };
+    return { fixed:fixed, floatR:floatR, sumFixed:sumFixed, remainder:remainder,
+      finalRoom:finalRoom, finalPerson:finalPerson, normalized:normalized, warnNeg:warnNeg };
   }
 
   // ---- Render ----
   var grid = document.getElementById("grid");
 
   function render(){
-    var c = compute();
+    // preservar el campo que el usuario está editando (clave en tiempo real)
+    var active = document.activeElement;
+    var af = (active && active.id && grid.contains(active))
+      ? {id:active.id, val:active.value, s:selOf(active), e:selEndOf(active)} : null;
 
+    var c = compute();
     document.getElementById("s-fixed").textContent = money(c.sumFixed);
     document.getElementById("s-rem").textContent = money(c.remainder);
     var sum = 0; ROOMS.forEach(function(r){ sum += c.finalRoom[r.id]; });
@@ -297,110 +323,133 @@
       var s = state.rooms[r.id];
       var isFixed = (s.bid !== null && s.bid !== undefined && !isNaN(s.bid));
       var isSingle = r.people === 1;
-      var person = c.finalPerson[r.id];
-      var room = c.finalRoom[r.id];
+      var person = c.finalPerson[r.id], room = c.finalRoom[r.id];
       var d = person - BASE_PERSON;
       var roomLab = isSingle ? "esta cama · 1 persona" : "el cuarto · 2 personas";
       var occLab = isSingle ? "Ocupante" : "Pareja / ocupantes";
       var occPh = isSingle ? "Ej. Zebede" : "Ej. Ana y Luis";
 
       var card = document.createElement("div");
-      card.className = "card " + (r.featured ? "featured " : "") + (isFixed ? "fixed" : "floating");
-
+      card.className = "card " + (isFixed ? "fixed" : "floating");
       var tags = r.tags.map(function(t){ return '<span class="tag'+(t.s?' strong':'')+'">'+t.t+'</span>'; }).join("");
-
       var deltaCls = Math.abs(d) < 0.005 ? "flat" : (d < 0 ? "save" : "prem");
       var deltaTxt = Math.abs(d) < 0.005 ? "Al precio base"
         : (d < 0 ? "Ahorras " + money(-d) + " / persona" : "Pagas " + money(d) + " / persona de más");
-
-      var stateP = isFixed
-        ? '<span class="pill state-pill fx">Puja fija</span>'
-        : '<span class="pill state-pill fl">Flotante</span>';
-
+      var stateP = isFixed ? '<span class="pill state-pill fx">Puja fija</span>' : '<span class="pill state-pill fl">Flotante</span>';
       var bidVal = isFixed ? s.bid : "";
-      var placeholder = isFixed ? "" : "por persona";
 
       card.innerHTML =
-        '<div class="card-top">'+
-          '<div><h3 class="rname">'+r.name+'</h3><p class="rdesc">'+r.desc+'</p></div>'+
-          stateP+
+        '<div class="photo">'+
+          '<img src="'+r.img+'" alt="'+escapeAttr(r.name)+'" loading="lazy">'+
+          '<div class="grad"></div>'+ stateP +
+          '<div class="ptitle"><h3 class="rname">'+r.name+'</h3><p class="rdesc">'+r.desc+'</p></div>'+
         '</div>'+
-        '<div class="tags">'+tags+'</div>'+
-        '<div class="price-block">'+
-          '<div class="pp"><span class="amt">'+money(person)+'</span><span class="lab">por persona</span>'+
-            '<span class="delta '+deltaCls+'">'+deltaTxt+'</span></div>'+
-          '<div class="proom"><span class="amt">'+money(room)+'</span><br><span class="lab">'+roomLab+'</span></div>'+
-        '</div>'+
-        '<div class="controls">'+
-          '<div class="field occ"><label for="occ-'+r.id+'">'+occLab+'</label>'+
-            '<input type="text" id="occ-'+r.id+'" value="'+escapeAttr(s.occ||"")+'" placeholder="'+occPh+'" autocomplete="off"></div>'+
-          '<div class="field"><label for="bid-'+r.id+'">Puja por persona</label>'+
-            '<div class="bid-row"><div class="stepper">'+
-              '<button type="button" data-dec="'+r.id+'" aria-label="Bajar">–</button>'+
-              '<input type="number" id="bid-'+r.id+'" value="'+bidVal+'" placeholder="'+placeholder+'" step="'+STEP+'" min="0" inputmode="decimal">'+
-              '<button type="button" data-inc="'+r.id+'" aria-label="Subir">+</button>'+
-            '</div></div>'+
-            (isFixed ? '' : '<span class="hint">Sin puja: '+(isSingle?'esta cama flota':'este cuarto flota')+' en '+money(person)+' / persona.</span>')+
+        '<div class="body">'+
+          '<div class="tags">'+tags+'</div>'+
+          '<div class="price-block">'+
+            '<div class="pp"><span class="amt">'+money(person)+'</span><span class="lab">por persona</span>'+
+              '<span class="delta '+deltaCls+'">'+deltaTxt+'</span></div>'+
+            '<div class="proom"><span class="amt">'+money(room)+'</span><br><span class="lab">'+roomLab+'</span></div>'+
           '</div>'+
-          '<div class="card-actions">'+
-            '<button type="button" class="primary tiny" data-fix="'+r.id+'">'+(isFixed?"Actualizar puja":"Fijar puja")+'</button>'+
-            (isFixed ? '<button type="button" class="ghost tiny" data-free="'+r.id+'">Soltar (flotar)</button>' : '')+
+          '<div class="controls">'+
+            '<div class="field occ"><label for="occ-'+r.id+'">'+occLab+'</label>'+
+              '<input type="text" id="occ-'+r.id+'" value="'+escapeAttr(s.occ||"")+'" placeholder="'+occPh+'" autocomplete="off"></div>'+
+            '<div class="field"><label for="bid-'+r.id+'">Puja por persona</label>'+
+              '<div class="bid-row"><div class="stepper">'+
+                '<button type="button" data-dec="'+r.id+'" aria-label="Bajar">–</button>'+
+                '<input type="number" id="bid-'+r.id+'" value="'+bidVal+'" placeholder="por persona" step="'+STEP+'" min="0" inputmode="decimal">'+
+                '<button type="button" data-inc="'+r.id+'" aria-label="Subir">+</button>'+
+              '</div></div>'+
+              (isFixed ? '' : '<span class="hint">Sin puja: '+(isSingle?'esta cama flota':'este cuarto flota')+' en '+money(person)+' / persona.</span>')+
+            '</div>'+
+            '<div class="card-actions">'+
+              '<button type="button" class="primary tiny" data-fix="'+r.id+'">'+(isFixed?"Actualizar puja":"Fijar puja")+'</button>'+
+              (isFixed ? '<button type="button" class="ghost tiny" data-free="'+r.id+'">Soltar (flotar)</button>' : '')+
+            '</div>'+
           '</div>'+
         '</div>';
       grid.appendChild(card);
     });
 
-    // note
     var note = document.getElementById("note");
     if(c.warnNeg){
-      note.className = "note show";
+      note.className = "note warn show";
       note.textContent = "Las pujas fijas ya superan el total: los cuartos flotantes saldrían en negativo. Alguien debe bajar su puja o fijar otro cuarto.";
     } else if(c.normalized){
-      note.className = "note show";
-      note.textContent = "Los 5 cuartos tienen puja y la suma no daba exacta: se ajustó cada cuarto por igual para cuadrar en $12,611.30 (se conservan las diferencias entre pujas).";
-    } else {
-      note.className = "note";
-      note.textContent = "";
-    }
+      note.className = "note info show";
+      note.textContent = "Los espacios tienen puja y la suma no daba exacta: se ajustó cada uno por igual para cuadrar en $12,611.30 (se conservan las diferencias entre pujas).";
+    } else { note.className = "note"; note.textContent = ""; }
 
     renderLog();
+    if(af){ var el = document.getElementById(af.id); if(el){ el.value = af.val; try{ el.focus(); if(af.s!=null && el.setSelectionRange) el.setSelectionRange(af.s, af.e); }catch(_){ } } }
     save();
   }
 
+  function selOf(el){ try{ return el.selectionStart; }catch(e){ return null; } }
+  function selEndOf(el){ try{ return el.selectionEnd; }catch(e){ return null; } }
+
   function renderLog(){
     var log = document.getElementById("log");
-    if(!state.log.length){
-      log.innerHTML = '<div class="log-empty">Aún no hay pujas. Fija la primera para empezar.</div>';
-      return;
-    }
-    log.innerHTML = state.log.slice().reverse().map(function(e){
+    if(!state.log.length){ log.innerHTML = '<div class="log-empty">Aún no hay pujas. Fija la primera para empezar.</div>'; return; }
+    log.innerHTML = state.log.slice(-60).reverse().map(function(e){
       return '<div class="log-item"><span class="t">'+e.t+'</span><span class="m">'+e.m+'</span></div>';
     }).join("");
   }
 
   function escapeAttr(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   function esc(s){ return escapeAttr(s); }
+  function nowLabel(){ var d=new Date(); return d.toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"}); }
+  function makeLog(msg){ return {t:nowLabel(), m:msg}; }
 
-  function nowLabel(){
-    var d = new Date();
-    return d.toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"});
-  }
-  function pushLog(msg){
-    state.log.push({t:nowLabel(), m:msg});
-    if(state.log.length > 60) state.log.shift();
+  function roomById(id){ for(var i=0;i<ROOMS.length;i++){ if(ROOMS[i].id===id) return ROOMS[i]; } return null; }
+
+  // ---- Sincronización con Firebase ----
+  function setSync(kind, text){
+    var el = document.getElementById("sync");
+    el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
+    document.getElementById("sync-txt").textContent = text;
   }
 
-  // ---- Events ----
+  function initSync(){
+    if(!FIREBASE_CONFIG || typeof firebase === "undefined"){
+      setSync("local", "Modo local · sala " + ROOM);
+      return;
+    }
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      dbRef = firebase.database().ref("subastas/" + ROOM);
+      firebase.database().ref(".info/connected").on("value", function(snap){
+        if(snap.val() === true){ online = true; setSync("live", "En vivo · sala " + ROOM); }
+        else { online = false; setSync("err", "Sin conexión · reintentando…"); }
+      });
+      dbRef.on("value", function(snap){
+        applyingRemote = true;
+        var v = snap.val() || {};
+        var rooms = v.rooms || {};
+        ROOMS.forEach(function(r){
+          var rr = rooms[r.id] || {};
+          state.rooms[r.id] = { bid: (typeof rr.bid === "number" ? rr.bid : null), occ: rr.occ || "" };
+        });
+        state.log = v.log ? Object.keys(v.log).sort().map(function(k){ return v.log[k]; }) : [];
+        applyingRemote = false;
+        render();
+      }, function(err){ setSync("err", "Error: " + err.code); });
+    }catch(e){ setSync("err", "Config inválida"); }
+  }
+
+  function pushRoom(id){ if(online && dbRef){ var s = state.rooms[id]; dbRef.child("rooms/"+id).set({ bid: (s.bid==null?null:s.bid), occ: s.occ||"" }); } }
+  function pushLogRemote(entry){ if(online && dbRef){ dbRef.child("log").push(entry); } }
+
+  // ---- Eventos ----
   grid.addEventListener("click", function(ev){
     var el = ev.target.closest("button"); if(!el) return;
     var inc = el.getAttribute("data-inc"), dec = el.getAttribute("data-dec");
     var fix = el.getAttribute("data-fix"), free = el.getAttribute("data-free");
+
     if(inc || dec){
-      var id = inc || dec;
-      var input = document.getElementById("bid-"+id);
+      var id = inc || dec, input = document.getElementById("bid-"+id);
       var v = parseFloat(input.value); if(isNaN(v)) v = BASE_PERSON;
-      v = Math.max(0, v + (inc ? STEP : -STEP));
-      input.value = v;
+      input.value = Math.max(0, v + (inc ? STEP : -STEP));
     }
     if(fix){
       var input2 = document.getElementById("bid-"+fix);
@@ -410,20 +459,20 @@
       state.rooms[fix].bid = v2;
       state.rooms[fix].occ = document.getElementById("occ-"+fix).value;
       var rm = roomById(fix);
-      var who = state.rooms[fix].occ ? (state.rooms[fix].occ) : "Una pareja";
-      if(was === null || was === undefined){
-        pushLog('<b>'+esc(who)+'</b> fija <b>'+rm.name+'</b> en '+money(v2)+' / persona.');
-      } else if(was !== v2){
-        pushLog('<b>'+esc(who)+'</b> ajusta <b>'+rm.name+'</b>: '+money(was)+' → '+money(v2)+' / persona.');
-      }
-      render();
+      var who = state.rooms[fix].occ ? state.rooms[fix].occ : "Una pareja";
+      var entry;
+      if(was === null || was === undefined) entry = makeLog('<b>'+esc(who)+'</b> fija <b>'+rm.name+'</b> en '+money(v2)+' / persona.');
+      else if(was !== v2) entry = makeLog('<b>'+esc(who)+'</b> ajusta <b>'+rm.name+'</b>: '+money(was)+' → '+money(v2)+' / persona.');
+      if(entry){ state.log.push(entry); pushLogRemote(entry); }
+      pushRoom(fix); render();
     }
     if(free){
       var rm2 = roomById(free);
       var who2 = state.rooms[free].occ ? state.rooms[free].occ : "Alguien";
       state.rooms[free].bid = null;
-      pushLog('<b>'+esc(who2)+'</b> suelta <b>'+rm2.name+'</b> (vuelve a flotar).');
-      render();
+      var e2 = makeLog('<b>'+esc(who2)+'</b> suelta <b>'+rm2.name+'</b> (vuelve a flotar).');
+      state.log.push(e2); pushLogRemote(e2);
+      pushRoom(free); render();
     }
   });
 
@@ -431,43 +480,49 @@
     var t = ev.target;
     if(t.id && t.id.indexOf("occ-")===0){
       var id = t.id.slice(4);
-      state.rooms[id].occ = t.value;
-      save();
+      state.rooms[id].occ = t.value; save();
+      if(online && dbRef){ clearTimeout(occTimers[id]); occTimers[id] = setTimeout(function(){ dbRef.child("rooms/"+id+"/occ").set(t.value); }, 500); }
     }
   });
 
-  function roomById(id){ for(var i=0;i<ROOMS.length;i++){ if(ROOMS[i].id===id) return ROOMS[i]; } return null; }
-
-  // Buttons
   document.getElementById("btn-reset").addEventListener("click", function(){
-    if(!confirm("¿Reiniciar toda la subasta? Se borran pujas, ocupantes y registro.")) return;
+    if(!confirm("¿Reiniciar toda la subasta para TODOS? Se borran pujas, ocupantes y registro.")) return;
     ROOMS.forEach(function(r){ state.rooms[r.id] = {bid:null, occ:""}; });
     state.log = [];
+    if(online && dbRef){ dbRef.set(null); }
     render();
   });
   document.getElementById("btn-clearlog").addEventListener("click", function(){
-    state.log = []; render();
+    state.log = []; if(online && dbRef){ dbRef.child("log").set(null); } render();
   });
   document.getElementById("btn-example").addEventListener("click", function(){
-    ROOMS.forEach(function(r){ state.rooms[r.id].bid = null; });
+    ROOMS.forEach(function(r){ state.rooms[r.id].bid = null; if(online) pushRoom(r.id); });
     state.rooms["principal-arriba"].bid = 1550;
     if(!state.rooms["principal-arriba"].occ) state.rooms["principal-arriba"].occ = "Ejemplo";
-    pushLog('<b>Ejemplo</b>: principal de arriba en '+money(1550)+' / persona; los otros 4 flotan.');
-    render();
+    var e = makeLog('<b>Ejemplo</b>: principal de arriba en '+money(1550)+' / persona; los otros flotan.');
+    state.log.push(e); pushLogRemote(e);
+    pushRoom("principal-arriba"); render();
   });
 
-  // Theme toggle
+  document.getElementById("btn-share").addEventListener("click", function(){
+    var url = location.href;
+    var btn = this;
+    function done(){ var o=btn.textContent; btn.textContent="✓ Copiado"; setTimeout(function(){ btn.textContent=o; }, 1600); }
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done, function(){ prompt("Copia el link:", url); }); }
+    else { prompt("Copia el link:", url); }
+  });
+
   var btnTheme = document.getElementById("btn-theme");
   btnTheme.addEventListener("click", function(){
-    var root = document.documentElement;
-    var cur = root.getAttribute("data-theme");
+    var root = document.documentElement, cur = root.getAttribute("data-theme");
     var next = cur === "dark" ? "light" : (cur === "light" ? "dark" : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark"));
     root.setAttribute("data-theme", next);
     try{ localStorage.setItem("subasta-theme", next); }catch(e){}
   });
-  try{ var savedTheme = localStorage.getItem("subasta-theme"); if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme); }catch(e){}
+  try{ var st = localStorage.getItem("subasta-theme"); if(st) document.documentElement.setAttribute("data-theme", st); }catch(e){}
 
   render();
+  initSync();
 })();
 </script>
 </body>
