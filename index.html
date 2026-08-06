@@ -219,9 +219,6 @@
       <button class="primary tiny" id="btn-close" type="button">🔒 Cerrar subasta</button>
       <button class="ghost tiny" id="btn-share" type="button">🔗 Compartir link</button>
       <button class="ghost tiny" id="btn-theme" type="button">◐ Tema</button>
-      <button class="ghost tiny" id="btn-example" type="button">Ver ejemplo</button>
-      <button class="ghost tiny" id="btn-clearlog" type="button">Limpiar registro</button>
-      <button class="ghost tiny" id="btn-reset" type="button">Reiniciar todo</button>
     </div>
   </section>
 
@@ -239,7 +236,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b12</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b13</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -491,7 +488,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b12";
+  var BUILD = "b13";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -639,27 +636,6 @@
     var e = makeLog(willClose ? '🔒 <b>Subasta cerrada.</b> Precios finales congelados.' : '🔓 <b>Subasta reabierta.</b> Se puede pujar de nuevo.');
     if(online && dbRef){ dbRef.child("closed").set(willClose); pushLogRemote(e); }
     else { state.closed = willClose; state.log.push(e); render(); }
-  });
-  document.getElementById("btn-reset").addEventListener("click", function(){
-    if(!confirm("¿Reiniciar toda la subasta para TODOS? Se borran pujas, ocupantes y registro.")) return;
-    ROOMS.forEach(function(r){ state.rooms[r.id] = {bid:null, occ:""}; });
-    state.log = []; state.closed = false;
-    if(online && dbRef){ dbRef.set(null); }
-    render();
-  });
-  document.getElementById("btn-clearlog").addEventListener("click", function(){
-    state.log = []; if(online && dbRef){ dbRef.child("log").set(null); } render();
-  });
-  document.getElementById("btn-example").addEventListener("click", function(){
-    var e = makeLog('<b>Ejemplo</b>: principal de arriba a '+money(1550)+' / persona; los otros flotan.');
-    if(online && dbRef){
-      dbRef.child("rooms").set({ "principal-arriba": { bid:1550, occ:"Ejemplo" } });
-      pushLogRemote(e);
-    } else {
-      ROOMS.forEach(function(r){ state.rooms[r.id] = {bid:null, occ:""}; });
-      state.rooms["principal-arriba"] = { bid:1550, occ:"Ejemplo" };
-      state.log.push(e); render();
-    }
   });
 
   document.getElementById("btn-share").addEventListener("click", function(){
