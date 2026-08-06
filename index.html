@@ -236,7 +236,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b13</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b14</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -488,7 +488,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b13";
+  var BUILD = "b14";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -621,7 +621,9 @@
       var input2 = document.getElementById("bid-"+bidId);
       var amount = parseFloat(input2.value);
       if(isNaN(amount) || amount <= 0){ toast("Escribe tu puja por persona (un número) antes de pujar.", "warn"); input2.focus(); return; }
-      var occVal = document.getElementById("occ-"+bidId).value;
+      var occInput = document.getElementById("occ-"+bidId);
+      var occVal = (occInput.value || "").trim();
+      if(occVal === ""){ toast("Escribe tu nombre / pareja antes de pujar.", "warn"); occInput.focus(); return; }
       var curBid = (typeof state.rooms[bidId].bid === "number") ? state.rooms[bidId].bid : 0;
       if(amount <= curBid){ toast("Para quedarte con este cuarto debes pujar MÁS de " + money(curBid) + ".", "warn"); input2.focus(); return; }
       bidRoom(bidId, amount, occVal);
