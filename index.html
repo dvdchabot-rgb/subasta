@@ -151,12 +151,14 @@
   .diag.ok{background:var(--save-wash); color:var(--accent-ink); border-color:transparent}
   .diag.bad{background:var(--warn-wash); color:var(--warn); border-color:transparent}
 
-  .clock{margin:2px 0 18px; padding:16px 18px; border-radius:16px; text-align:center; font-family:var(--sans);
-    font-weight:800; font-size:clamp(1.7rem,7vw,2.8rem); letter-spacing:.01em; line-height:1;
-    background:var(--warn-wash); color:var(--warn); font-variant-numeric:tabular-nums;
-    border:2px solid color-mix(in srgb,var(--warn) 45%,transparent)}
-  .clock[hidden]{display:none}
-  .clock.expired{background:var(--warn); color:#fff; border-color:var(--warn); font-size:clamp(1.2rem,5vw,1.9rem)}
+  .stat.clockstat[hidden]{display:none}
+  .stat.clockstat .k{color:var(--warn); font-weight:700}
+  #s-clock{color:var(--warn); font-family:var(--sans); font-weight:800; font-variant-numeric:tabular-nums;
+    font-size:clamp(1.3rem,3.4vw,1.7rem); line-height:1.1; letter-spacing:.01em; white-space:nowrap}
+  #s-clock.expired{font-size:clamp(1.05rem,3vw,1.35rem)}
+  @keyframes clockpulse{0%,100%{opacity:1}50%{opacity:.55}}
+  #s-clock{animation:clockpulse 2s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){ #s-clock{animation:none} }
 
   .closedbar{margin:0 0 18px; padding:13px 16px; border-radius:12px; background:#2b2620; color:#fff;
     font-size:.92rem; font-weight:700; text-align:center; letter-spacing:.01em}
@@ -225,16 +227,14 @@
     <div class="stat"><span class="k">Fijado por pujas</span><span class="v mono" id="s-fixed">$0.00</span></div>
     <div class="stat"><span class="k">Restante flotante</span><span class="v mono" id="s-rem">$12,611.30</span></div>
     <div class="stat check"><span class="k">Suma actual</span><span class="v mono" id="s-sum">$12,611.30 <span class="pill ok" id="s-check">✓ Cuadra</span></span></div>
+    <div class="stat clockstat" id="s-clock-wrap" hidden><span class="k">⏳ Cierra en</span><span class="v" id="s-clock">—</span></div>
     <div class="actions">
       <span class="sync" id="sync"><span class="dot"></span><span id="sync-txt">Conectando…</span></span>
       <button class="primary tiny" id="btn-close" type="button">🔒 Cerrar subasta</button>
-      <button class="ghost tiny" id="btn-clock" type="button">⏱️ Reloj</button>
       <button class="ghost tiny" id="btn-share" type="button">🔗 Compartir link</button>
       <button class="ghost tiny" id="btn-theme" type="button">◐ Tema</button>
     </div>
   </section>
-
-  <div class="clock" id="clock" hidden></div>
 
   <div class="diag" id="diag">Diagnóstico: iniciando…</div>
 
@@ -250,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b15</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b16</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -289,7 +289,12 @@
   var STEP = 25;
 
   // sala: permite varias subastas con ?sala=xxxx en la URL
-  var ROOM = (new URLSearchParams(location.search)).get("sala") || "casa-ski-2027";
+  var _qp = new URLSearchParams(location.search);
+  var ROOM = _qp.get("sala") || "casa-ski-2027";
+  // control admin del reloj por link secreto:  ?fin=2026-08-11T23:59  |  ?reloj=100 (horas)  |  ?fin=0 (quitar)
+  var adminFin = _qp.get("fin");
+  var adminReloj = _qp.get("reloj");
+  var adminApplied = false;
 
   // identidad por dispositivo: para que SOLO quien hizo la puja pueda corregirla
   var myId = (function(){
@@ -532,20 +537,42 @@
     return (d>0 ? d+"d " : "") + p(h)+":"+p(m)+":"+p(s);
   }
   function updateClockText(){
-    var clock = document.getElementById("clock");
-    if(!clock) return;
-    if(!state.deadline){ clock.hidden = true; return; }
-    clock.hidden = false;
+    var wrap = document.getElementById("s-clock-wrap");
+    var el = document.getElementById("s-clock");
+    if(!wrap || !el) return;
+    if(!state.deadline){ wrap.hidden = true; return; }
+    wrap.hidden = false;
     var rem = state.deadline - Date.now();
-    if(rem <= 0){ clock.className = "clock expired"; clock.textContent = "⏰ TIEMPO TERMINADO · subasta cerrada"; return; }
-    clock.className = "clock";
-    clock.textContent = "⏳ " + fmtDur(rem);
+    if(rem <= 0){ el.className = "v expired"; el.textContent = "⏰ TERMINADO"; return; }
+    el.className = "v";
+    el.textContent = fmtDur(rem);
   }
   var lastFrozen = null;
   function tick(){
     updateClockText();
     var f = isFrozen();
     if(f !== lastFrozen){ lastFrozen = f; render(); }
+  }
+  // aplica el reloj indicado en el link admin (una sola vez, al estar conectado)
+  function applyAdminClock(){
+    if(adminApplied) return;
+    if(adminFin === null && adminReloj === null) return;
+    if(!(online && dbRef)) return;
+    adminApplied = true;
+    var nd = null;
+    if(adminFin !== null){
+      if(adminFin === "0" || adminFin === ""){ nd = 0; }
+      else { var dt = new Date(adminFin); if(!isNaN(dt.getTime())) nd = dt.getTime(); }
+    } else {
+      var h = parseFloat(adminReloj);
+      if(!isNaN(h)) nd = h <= 0 ? 0 : (Date.now() + Math.round(h*3600000));
+    }
+    try{ history.replaceState(null, "", location.pathname); }catch(e){}
+    if(nd === null){ toast("Fecha/hora del reloj inválida.", "warn"); return; }
+    dbRef.child("deadline").set(nd);
+    pushLogRemote(makeLog(nd === 0 ? '⏱️ <b>Reloj quitado.</b>' : '⏱️ <b>Reloj:</b> la subasta cierra el '+new Date(nd).toLocaleString("es")+'.'));
+    toast(nd === 0 ? "Reloj quitado." : "Reloj puesto ✓", "ok");
+    lastFrozen = null; tick();
   }
 
   // ---- Aviso emergente (toast) ----
@@ -566,7 +593,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b15";
+  var BUILD = "b16";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -598,7 +625,7 @@
   function attachDB(){
     if(dbAttached) return; dbAttached = true;
     firebase.database().ref(".info/connected").on("value", function(snap){
-      if(snap.val() === true){ online = true; setSync("live", "En vivo · sala " + ROOM); setDiag("Conectado ✓ · listo para pujar · sala " + ROOM, "ok"); }
+      if(snap.val() === true){ online = true; setSync("live", "En vivo · sala " + ROOM); setDiag("Conectado ✓ · listo para pujar · sala " + ROOM, "ok"); applyAdminClock(); }
       else { online = false; setSync("err", "Sin conexión · reintentando…"); setDiag("SIN conexión a la base de datos. Reintentando… (revisa tu internet)", "bad"); }
     });
     dbRef.on("value", function(snap){
@@ -723,23 +750,6 @@
     var e = makeLog(willClose ? '🔒 <b>Subasta cerrada.</b> Precios finales congelados.' : '🔓 <b>Subasta reabierta.</b> Se puede pujar de nuevo.');
     if(online && dbRef){ dbRef.child("closed").set(willClose); pushLogRemote(e); }
     else { state.closed = willClose; state.log.push(e); render(); }
-  });
-
-  document.getElementById("btn-clock").addEventListener("click", function(){
-    var remH = state.deadline ? Math.max(0, (state.deadline - Date.now())/3600000) : 0;
-    var msg = state.deadline
-      ? ("Reloj actual: " + (remH>0 ? remH.toFixed(1)+" h restantes" : "TERMINADO") +
-         "\n\n¿En cuántas HORAS desde AHORA debe terminar? (0 = quitar el reloj)")
-      : "¿En cuántas HORAS desde ahora termina la subasta?\n(ej. 100)";
-    var input = prompt(msg, state.deadline ? "" : "100");
-    if(input === null) return;
-    var h = parseFloat(input);
-    if(isNaN(h) || h < 0){ toast("Número de horas inválido.", "warn"); return; }
-    var newDeadline = h <= 0 ? 0 : (Date.now() + Math.round(h*3600000));
-    var e = makeLog(h <= 0 ? '⏱️ <b>Reloj quitado.</b>' : '⏱️ <b>Reloj:</b> la subasta termina en '+h+' h.');
-    if(online && dbRef){ dbRef.child("deadline").set(newDeadline); pushLogRemote(e); }
-    else { state.deadline = newDeadline; state.log.push(e); render(); }
-    lastFrozen = null; tick();
   });
 
   document.getElementById("btn-share").addEventListener("click", function(){
