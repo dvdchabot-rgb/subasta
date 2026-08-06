@@ -141,11 +141,22 @@
   .bid-row .stepper button:hover{background:var(--accent-wash)}
   .card-actions{display:flex; gap:8px; flex-wrap:wrap}
   .hint{font-size:.78rem; color:var(--ink-faint)}
+  .occsels{display:flex; gap:8px; flex-wrap:wrap}
+  .occsel{flex:1 1 120px; min-width:110px; font-family:var(--sans); font-size:.95rem; color:var(--ink);
+    background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 11px; cursor:pointer}
+  .occsel:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
 
   .diag{margin:0 0 18px; padding:9px 14px; border-radius:10px; background:var(--surface-2); border:1px solid var(--border);
     color:var(--ink-soft); font-size:.8rem; font-weight:600; font-family:var(--sans); word-break:break-word}
   .diag.ok{background:var(--save-wash); color:var(--accent-ink); border-color:transparent}
   .diag.bad{background:var(--warn-wash); color:var(--warn); border-color:transparent}
+
+  .clock{margin:2px 0 18px; padding:16px 18px; border-radius:16px; text-align:center; font-family:var(--sans);
+    font-weight:800; font-size:clamp(1.7rem,7vw,2.8rem); letter-spacing:.01em; line-height:1;
+    background:var(--warn-wash); color:var(--warn); font-variant-numeric:tabular-nums;
+    border:2px solid color-mix(in srgb,var(--warn) 45%,transparent)}
+  .clock[hidden]{display:none}
+  .clock.expired{background:var(--warn); color:#fff; border-color:var(--warn); font-size:clamp(1.2rem,5vw,1.9rem)}
 
   .closedbar{margin:0 0 18px; padding:13px 16px; border-radius:12px; background:#2b2620; color:#fff;
     font-size:.92rem; font-weight:700; text-align:center; letter-spacing:.01em}
@@ -217,10 +228,13 @@
     <div class="actions">
       <span class="sync" id="sync"><span class="dot"></span><span id="sync-txt">Conectando…</span></span>
       <button class="primary tiny" id="btn-close" type="button">🔒 Cerrar subasta</button>
+      <button class="ghost tiny" id="btn-clock" type="button">⏱️ Reloj</button>
       <button class="ghost tiny" id="btn-share" type="button">🔗 Compartir link</button>
       <button class="ghost tiny" id="btn-theme" type="button">◐ Tema</button>
     </div>
   </section>
+
+  <div class="clock" id="clock" hidden></div>
 
   <div class="diag" id="diag">Diagnóstico: iniciando…</div>
 
@@ -236,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b14</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b15</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -300,6 +314,21 @@
     {id:"camarote-arriba", people:1, single:true, img:"img/camarote.jpg", name:"Camarote — Cama de arriba", desc:"Litera, cama de arriba. Baño compartido con el King derecha. Sin closet.",
       tags:[{t:"Abajo",s:false},{t:"1 persona",s:true},{t:"Baño compartido",s:false},{t:"Sin closet",s:false}]}
   ];
+
+  // Los 10 nombres del grupo (para los menús desplegables)
+  var NAMES = ["Daniel","Chabot","Michael","Ezra","Edy","Alberto","Chama","Jimmy","Morris","Zebede"];
+  // nombres ya asignados a OTROS cuartos con puja (no deben aparecer disponibles aquí)
+  function namesAssignedElsewhere(exceptId){
+    var set = {};
+    ROOMS.forEach(function(rr){
+      if(rr.id === exceptId) return;
+      var s = state.rooms[rr.id];
+      if(s && typeof s.bid === "number" && s.names && s.names.length){
+        s.names.forEach(function(n){ if(n) set[n] = true; });
+      }
+    });
+    return set;
+  }
 
   var STORE_KEY = "subasta-cuartos-" + ROOM;
   var state = load() || { rooms:{}, log:[] };
@@ -373,9 +402,18 @@
     check.textContent = ok ? "✓ Cuadra" : "≠ Revisar";
 
     var closedbar = document.getElementById("closedbar");
-    if(closedbar) closedbar.hidden = !(state.closed === true);
+    if(closedbar){
+      closedbar.hidden = !isFrozen();
+      closedbar.textContent = timeUp()
+        ? "⏰ SE ACABÓ EL TIEMPO — estos son los precios finales. Nadie puede pujar."
+        : "🔒 Subasta CERRADA — estos son los precios finales. Nadie puede pujar hasta reabrirla.";
+    }
     var btnClose = document.getElementById("btn-close");
     if(btnClose) btnClose.textContent = (state.closed === true) ? "🔓 Reabrir subasta" : "🔒 Cerrar subasta";
+
+    // preservar lo que el usuario tenga a medio elegir (nombres y monto) entre re-dibujos
+    var pending = {};
+    Array.prototype.forEach.call(grid.querySelectorAll(".occsel, input[type=number]"), function(el){ if(el.id) pending[el.id] = el.value; });
 
     grid.innerHTML = "";
     ROOMS.forEach(function(r){
@@ -385,11 +423,18 @@
       var person = c.finalPerson[r.id], room = c.finalRoom[r.id];
       var d = person - BASE_PERSON;
       var roomLab = isSingle ? "esta cama · 1 persona" : "el cuarto · 2 personas";
-      var occLab = isSingle ? "Ocupante" : "Pareja / ocupantes";
-      var occPh = isSingle ? "Ej. Zebede" : "Ej. Ana y Luis";
+      var occLab = isSingle ? "Elige la persona" : "Elige las 2 personas";
+      var takenElse = namesAssignedElsewhere(r.id);
+      var selOpts = '<option value="">— Elige —</option>' + NAMES.map(function(n){
+        return takenElse[n] ? "" : '<option value="'+n+'">'+n+'</option>';
+      }).join("");
+      var occSelects = "";
+      for(var pi=0; pi<r.people; pi++){
+        occSelects += '<select class="occsel" id="occsel-'+r.id+'-'+pi+'" data-room="'+r.id+'" aria-label="'+occLab+'">'+selOpts+'</select>';
+      }
 
       var card = document.createElement("div");
-      var locked = state.closed === true;
+      var locked = isFrozen();
       card.className = "card " + (isFixed ? "fixed" : "floating") + (locked ? " locked" : "");
       var tags = r.tags.map(function(t){ return '<span class="tag'+(t.s?' strong':'')+'">'+t.t+'</span>'; }).join("");
       var deltaCls = Math.abs(d) < 0.005 ? "flat" : (d < 0 ? "save" : "prem");
@@ -419,8 +464,7 @@
           (locked
             ? '<div class="final">🔒 Precio final: '+money(person)+' / persona'+(isFixed?' · '+esc(s.occ||"—"):' · sin dueño')+'</div>'
             : '<div class="controls">'+
-                '<div class="field occ"><label for="occ-'+r.id+'">'+occLab+'</label>'+
-                  '<input type="text" id="occ-'+r.id+'" value="'+escapeAttr(s.occ||"")+'" placeholder="'+occPh+'" autocomplete="off"></div>'+
+                '<div class="field"><label>'+occLab+'</label><div class="occsels">'+occSelects+'</div></div>'+
                 '<div class="field"><label for="bid-'+r.id+'">'+minTxt+'</label>'+
                   '<div class="bid-row"><div class="stepper">'+
                     '<button type="button" data-dec="'+r.id+'" aria-label="Bajar">–</button>'+
@@ -436,6 +480,12 @@
               '</div>')+
         '</div>';
       grid.appendChild(card);
+    });
+
+    // restaurar selección/monto en curso (solo si el campo quedó vacío tras redibujar)
+    Object.keys(pending).forEach(function(id){
+      var el = document.getElementById(id);
+      if(el && pending[id] && el.value === ""){ el.value = pending[id]; }
     });
 
     var note = document.getElementById("note");
@@ -470,6 +520,34 @@
 
   function roomById(id){ for(var i=0;i<ROOMS.length;i++){ if(ROOMS[i].id===id) return ROOMS[i]; } return null; }
 
+  // ---- Congelado (por cierre manual o por reloj) ----
+  function timeUp(){ return !!(state.deadline && Date.now() >= state.deadline); }
+  function isFrozen(){ return state.closed === true || timeUp(); }
+  function fmtDur(ms){
+    var s = Math.floor(ms/1000);
+    var d = Math.floor(s/86400); s -= d*86400;
+    var h = Math.floor(s/3600); s -= h*3600;
+    var m = Math.floor(s/60); s -= m*60;
+    function p(n){ return (n<10?"0":"")+n; }
+    return (d>0 ? d+"d " : "") + p(h)+":"+p(m)+":"+p(s);
+  }
+  function updateClockText(){
+    var clock = document.getElementById("clock");
+    if(!clock) return;
+    if(!state.deadline){ clock.hidden = true; return; }
+    clock.hidden = false;
+    var rem = state.deadline - Date.now();
+    if(rem <= 0){ clock.className = "clock expired"; clock.textContent = "⏰ TIEMPO TERMINADO · subasta cerrada"; return; }
+    clock.className = "clock";
+    clock.textContent = "⏳ " + fmtDur(rem);
+  }
+  var lastFrozen = null;
+  function tick(){
+    updateClockText();
+    var f = isFrozen();
+    if(f !== lastFrozen){ lastFrozen = f; render(); }
+  }
+
   // ---- Aviso emergente (toast) ----
   var toastEl = null, toastTimer = null;
   function toast(msg, kind){
@@ -488,7 +566,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b14";
+  var BUILD = "b15";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -529,12 +607,15 @@
       var rooms = v.rooms || {};
       ROOMS.forEach(function(r){
         var rr = rooms[r.id] || {};
-        state.rooms[r.id] = { bid: (typeof rr.bid === "number" ? rr.bid : null), occ: rr.occ || "", by: rr.by || "", prev: (typeof rr.prev === "number" ? rr.prev : 0) };
+        var nm = Array.isArray(rr.names) ? rr.names.filter(Boolean) : [];
+        state.rooms[r.id] = { bid: (typeof rr.bid === "number" ? rr.bid : null), names: nm, occ: rr.occ || nm.join(" y ") || "", by: rr.by || "", prev: (typeof rr.prev === "number" ? rr.prev : 0) };
       });
       state.log = v.log ? Object.keys(v.log).sort().map(function(k){ return v.log[k]; }) : [];
       state.closed = (v.closed === true);
+      state.deadline = (typeof v.deadline === "number") ? v.deadline : 0;
       applyingRemote = false;
       render();
+      updateClockText();
     }, function(err){ setSync("err", "Error: " + err.code); setDiag("La base de datos rechazó la LECTURA: " + err.code + " (revisa las reglas)", "bad"); });
   }
 
@@ -543,33 +624,34 @@
 
   // Pujar: SOLO SUBE. Usa una transacción atómica: solo se acepta si el monto
   // supera la puja actual (a prueba de dos personas pujando a la vez).
-  function bidRoom(id, amount, occ){
+  function bidRoom(id, amount, names){
     var rm = roomById(id);
+    var occ = names.join(" y ");
     if(!(online && dbRef)){
       // modo local (un solo dispositivo)
       var cur = (typeof state.rooms[id].bid === "number") ? state.rooms[id].bid : 0;
       if(amount <= cur){ toast("Debes pujar más de " + money(cur) + ".", "warn"); return; }
-      state.rooms[id] = { bid: amount, occ: occ || state.rooms[id].occ || "", by: myId, prev: cur };
-      state.log.push(makeLog('<b>'+esc(occ||"Alguien")+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
+      state.rooms[id] = { bid: amount, names: names, occ: occ, by: myId, prev: cur };
+      state.log.push(makeLog('<b>'+esc(occ)+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
       setDiag("(local) Puja aplicada: " + rm.name + " = $" + amount, "ok");
       render(); return;
     }
     dbRef.child("rooms/"+id).transaction(function(cur){
       cur = cur || {};
       var c = (typeof cur.bid === "number") ? cur.bid : 0;
-      if(amount > c){ return { bid: amount, occ: occ || cur.occ || "", by: myId, prev: c }; }
+      if(amount > c){ return { bid: amount, names: names, occ: occ, by: myId, prev: c }; }
       return; // aborta: no supera la puja actual
     }, function(err, committed){
       if(err){ setDiag("✗ Error al pujar: " + (err.message || err), "bad"); toast("Error al pujar. Intenta otra vez.", "warn"); return; }
       if(!committed){ setDiag("✗ Puja rechazada: alguien ya pujó igual o más.", "bad"); toast("Alguien ya pujó igual o más alto. Sube tu monto.", "warn"); return; }
-      setDiag("✓ Puja registrada: " + rm.name + " = $" + amount + (occ?" ("+occ+")":""), "ok");
-      pushLogRemote(makeLog('<b>'+esc(occ||"Alguien")+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
+      setDiag("✓ Puja registrada: " + rm.name + " = $" + amount + " ("+occ+")", "ok");
+      pushLogRemote(makeLog('<b>'+esc(occ)+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
     });
   }
 
   // Corregir: SOLO el dueño (mismo dispositivo). No puede bajar de la puja anterior (prev).
   function correctRoom(id){
-    if(state.closed === true){ toast("La subasta está cerrada.", "warn"); return; }
+    if(isFrozen()){ toast("La subasta está cerrada.", "warn"); return; }
     if(FIREBASE_CONFIG && !online){ toast("Sin conexión en vivo. Espera a que arriba diga «En vivo».", "warn"); return; }
     var rm = roomById(id), s = state.rooms[id];
     if(s.by && s.by !== myId){ toast("Solo quien hizo la puja puede corregirla (desde su mismo dispositivo).", "warn"); return; }
@@ -583,7 +665,7 @@
     if(isNaN(v) || v <= 0){ toast("Monto inválido.", "warn"); return; }
     if(v <= floor){ toast("No puedes corregir por debajo de "+money(floor)+" (la puja anterior). Debe ser mayor.", "warn"); return; }
     if(!(online && dbRef)){
-      state.rooms[id] = { bid:v, occ:s.occ||"", by:myId, prev:floor };
+      state.rooms[id] = { bid:v, names:s.names||[], occ:s.occ||"", by:myId, prev:floor };
       state.log.push(makeLog('✏️ <b>Corrección</b>: '+rm.name+' → '+money(v)+' / persona'+(curBid!==v?' (era '+money(curBid)+')':'')));
       render(); return;
     }
@@ -592,7 +674,7 @@
       if(cur.by && cur.by !== myId) return; // ya no es tuyo → aborta
       var f = (typeof cur.prev === "number") ? cur.prev : 0;
       if(v <= f) return; // no puede bajar del piso
-      return { bid: v, occ: cur.occ || s.occ || "", by: myId, prev: f };
+      return { bid: v, names: (cur.names && cur.names.length ? cur.names : (s.names||[])), occ: cur.occ || s.occ || "", by: myId, prev: f };
     }, function(err, committed){
       if(err){ toast("Error al corregir. Intenta otra vez.", "warn"); return; }
       if(!committed){ toast("No se pudo corregir: ya no es tu puja, o quedaba por debajo del mínimo.", "warn"); return; }
@@ -616,17 +698,20 @@
       input.value = Math.max(0, v + (inc ? STEP : -STEP));
     }
     if(bidId){
-      if(state.closed === true){ toast("La subasta está cerrada. No se puede pujar.", "warn"); return; }
+      if(isFrozen()){ toast("La subasta está cerrada. No se puede pujar.", "warn"); return; }
       if(FIREBASE_CONFIG && !online){ toast("Sin conexión en vivo todavía. Espera a que arriba diga «En vivo».", "warn"); return; }
+      var rmObj = roomById(bidId);
       var input2 = document.getElementById("bid-"+bidId);
       var amount = parseFloat(input2.value);
       if(isNaN(amount) || amount <= 0){ toast("Escribe tu puja por persona (un número) antes de pujar.", "warn"); input2.focus(); return; }
-      var occInput = document.getElementById("occ-"+bidId);
-      var occVal = (occInput.value || "").trim();
-      if(occVal === ""){ toast("Escribe tu nombre / pareja antes de pujar.", "warn"); occInput.focus(); return; }
+      var sels = grid.querySelectorAll('.occsel[data-room="'+bidId+'"]');
+      var names = [];
+      Array.prototype.forEach.call(sels, function(sl){ if(sl.value) names.push(sl.value); });
+      if(names.length !== rmObj.people){ toast(rmObj.people === 2 ? "Elige las 2 personas antes de pujar." : "Elige la persona antes de pujar.", "warn"); return; }
+      if(rmObj.people === 2 && names[0] === names[1]){ toast("Elige dos personas distintas.", "warn"); return; }
       var curBid = (typeof state.rooms[bidId].bid === "number") ? state.rooms[bidId].bid : 0;
       if(amount <= curBid){ toast("Para quedarte con este cuarto debes pujar MÁS de " + money(curBid) + ".", "warn"); input2.focus(); return; }
-      bidRoom(bidId, amount, occVal);
+      bidRoom(bidId, amount, names);
       input2.value = "";
     }
   });
@@ -638,6 +723,23 @@
     var e = makeLog(willClose ? '🔒 <b>Subasta cerrada.</b> Precios finales congelados.' : '🔓 <b>Subasta reabierta.</b> Se puede pujar de nuevo.');
     if(online && dbRef){ dbRef.child("closed").set(willClose); pushLogRemote(e); }
     else { state.closed = willClose; state.log.push(e); render(); }
+  });
+
+  document.getElementById("btn-clock").addEventListener("click", function(){
+    var remH = state.deadline ? Math.max(0, (state.deadline - Date.now())/3600000) : 0;
+    var msg = state.deadline
+      ? ("Reloj actual: " + (remH>0 ? remH.toFixed(1)+" h restantes" : "TERMINADO") +
+         "\n\n¿En cuántas HORAS desde AHORA debe terminar? (0 = quitar el reloj)")
+      : "¿En cuántas HORAS desde ahora termina la subasta?\n(ej. 100)";
+    var input = prompt(msg, state.deadline ? "" : "100");
+    if(input === null) return;
+    var h = parseFloat(input);
+    if(isNaN(h) || h < 0){ toast("Número de horas inválido.", "warn"); return; }
+    var newDeadline = h <= 0 ? 0 : (Date.now() + Math.round(h*3600000));
+    var e = makeLog(h <= 0 ? '⏱️ <b>Reloj quitado.</b>' : '⏱️ <b>Reloj:</b> la subasta termina en '+h+' h.');
+    if(online && dbRef){ dbRef.child("deadline").set(newDeadline); pushLogRemote(e); }
+    else { state.deadline = newDeadline; state.log.push(e); render(); }
+    lastFrozen = null; tick();
   });
 
   document.getElementById("btn-share").addEventListener("click", function(){
@@ -659,6 +761,8 @@
 
   render();
   initSync();
+  updateClockText();
+  setInterval(tick, 1000);
 })();
 </script>
 </body>
