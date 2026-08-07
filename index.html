@@ -250,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b17</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b18</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -308,8 +308,8 @@
   var ROOMS = [
     {id:"principal-arriba", people:2, img:"img/principal-arriba.jpg", name:"King Principal — Arriba", desc:"La grande. Baño privado y closet.",
       tags:[{t:"Arriba",s:false},{t:"La más amplia",s:true},{t:"Baño privado",s:true},{t:"Closet",s:true}]},
-    {id:"principal-abajo", people:2, img:"img/principal-abajo.jpg", name:"King Principal — Abajo", desc:"Bajando la escalera a la izquierda. Baño privado y closet.",
-      tags:[{t:"Abajo",s:false},{t:"Baño privado",s:true},{t:"Closet",s:true}]},
+    {id:"principal-abajo", people:2, img:"img/principal-abajo.jpg", name:"King Principal — Abajo", desc:"Bajando la escalera a la izquierda. Con closet. Baño compartido con la persona del camarote de arriba.",
+      tags:[{t:"Abajo",s:false},{t:"Baño compartido",s:false},{t:"Closet",s:true}]},
     {id:"esquina", people:2, img:"img/esquina.jpg", name:"King Esquina — Abajo", desc:"Al fondo, en la esquina. Baño privado, sin closet.",
       tags:[{t:"Abajo",s:false},{t:"Baño privado",s:true},{t:"Sin closet",s:false}]},
     {id:"king-derecha", people:2, img:"img/king-derecha.jpg", name:"King Derecha — Abajo", desc:"Bajando la escalera a la derecha. Closet. Baño compartido con el camarote.",
@@ -593,7 +593,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b17";
+  var BUILD = "b18";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
