@@ -250,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b16</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b17</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -316,7 +316,7 @@
       tags:[{t:"Abajo",s:false},{t:"Closet",s:true},{t:"Baño compartido",s:false}]},
     {id:"camarote-abajo", people:1, single:true, img:"img/camarote.jpg", name:"Camarote — Cama de abajo", desc:"Litera, cama de abajo. Baño compartido con el King derecha. Sin closet.",
       tags:[{t:"Abajo",s:false},{t:"1 persona",s:true},{t:"Baño compartido",s:false},{t:"Sin closet",s:false}]},
-    {id:"camarote-arriba", people:1, single:true, img:"img/camarote.jpg", name:"Camarote — Cama de arriba", desc:"Litera, cama de arriba. Baño compartido con el King derecha. Sin closet.",
+    {id:"camarote-arriba", people:1, single:true, img:"img/camarote.jpg", name:"Camarote — Cama de arriba", desc:"Cama de arriba. Baño compartido con el King de abajo, apenas bajas la escalera a mano izquierda.",
       tags:[{t:"Abajo",s:false},{t:"1 persona",s:true},{t:"Baño compartido",s:false},{t:"Sin closet",s:false}]}
   ];
 
@@ -593,7 +593,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b16";
+  var BUILD = "b17";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
