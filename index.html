@@ -250,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b19</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b20</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -437,9 +437,8 @@
       var d = person - BASE_PERSON;
       var roomLab = isSingle ? "esta cama · 1 persona" : "el cuarto · 2 personas";
       var occLab = isSingle ? "Elige la persona" : "Elige las 2 personas";
-      var _owner = nameOwnerMap();
       var selOpts = '<option value="">— Elige —</option>' + NAMES.map(function(n){
-        return nameSelectable(n, r.id, _owner) ? ('<option value="'+n+'">'+n+'</option>') : "";
+        return '<option value="'+n+'">'+n+'</option>';
       }).join("");
       var occSelects = "";
       for(var pi=0; pi<r.people; pi++){
@@ -601,7 +600,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b19";
+  var BUILD = "b20";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -657,16 +656,16 @@
 
   function pushLogRemote(entry){ if(online && dbRef){ var r = dbRef.child("log").push(entry); if(r && r.catch) r.catch(writeErr); } }
 
-  // Al mudarme (ganar un cuarto con mis mismas personas), liberar MIS otros cuartos
-  // que tuvieran a esas personas, para que no queden en dos lugares y se libere el pool.
+  // Al pujar un cuarto con ciertas personas, liberar cualquier OTRO cuarto que las
+  // tuviera (una persona no puede estar en dos lugares). El otro cuarto vuelve a estar libre.
   function freeMyOtherRooms(exceptId, names){
     ROOMS.forEach(function(other){
       if(other.id === exceptId) return;
       var os = state.rooms[other.id];
-      var mine = os && typeof os.bid === "number" && (os.by || "") === myId && os.names &&
-                 os.names.some(function(n){ return names.indexOf(n) !== -1; });
-      if(!mine) return;
-      var e = makeLog('↪️ <b>'+esc(os.occ||"")+'</b> dejó libre <b>'+other.name+'</b> (se mudaron).');
+      var shares = os && typeof os.bid === "number" && os.names &&
+                   os.names.some(function(n){ return names.indexOf(n) !== -1; });
+      if(!shares) return;
+      var e = makeLog('↪️ <b>'+esc(os.occ||"")+'</b> ya no tiene <b>'+other.name+'</b> (se mudaron).');
       if(online && dbRef){ dbRef.child("rooms/"+other.id).set(null); pushLogRemote(e); }
       else { state.rooms[other.id] = { bid:null, occ:"", names:[] }; state.log.push(e); }
     });
