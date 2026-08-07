@@ -250,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b18</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b19</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -322,17 +322,25 @@
 
   // Los 10 nombres del grupo (para los menús desplegables)
   var NAMES = ["Daniel","Chabot","Michael","Ezra","Edy","Alberto","Chama","Jimmy","Morris","Zebede"];
-  // nombres ya asignados a OTROS cuartos con puja (no deben aparecer disponibles aquí)
-  function namesAssignedElsewhere(exceptId){
-    var set = {};
+  // mapa: nombre -> { roomId, by } del cuarto (con puja) que lo tiene ahora
+  function nameOwnerMap(){
+    var m = {};
     ROOMS.forEach(function(rr){
-      if(rr.id === exceptId) return;
       var s = state.rooms[rr.id];
       if(s && typeof s.bid === "number" && s.names && s.names.length){
-        s.names.forEach(function(n){ if(n) set[n] = true; });
+        s.names.forEach(function(n){ if(n) m[n] = { roomId: rr.id, by: s.by || "" }; });
       }
     });
-    return set;
+    return m;
+  }
+  // ¿puede ESTE dispositivo elegir el nombre n al pujar por el cuarto exceptId?
+  // Sí si: está libre, o ya está en este cuarto, o está en OTRO cuarto que YO mismo pujé (me puedo mudar).
+  function nameSelectable(n, exceptId, owner){
+    var o = owner[n];
+    if(!o) return true;                 // libre
+    if(o.roomId === exceptId) return true; // ya está aquí
+    if(o.by && o.by === myId) return true; // es mío (en otro cuarto) → puedo moverlo
+    return false;                        // está en el cuarto de otra persona
   }
 
   var STORE_KEY = "subasta-cuartos-" + ROOM;
@@ -429,9 +437,9 @@
       var d = person - BASE_PERSON;
       var roomLab = isSingle ? "esta cama · 1 persona" : "el cuarto · 2 personas";
       var occLab = isSingle ? "Elige la persona" : "Elige las 2 personas";
-      var takenElse = namesAssignedElsewhere(r.id);
+      var _owner = nameOwnerMap();
       var selOpts = '<option value="">— Elige —</option>' + NAMES.map(function(n){
-        return takenElse[n] ? "" : '<option value="'+n+'">'+n+'</option>';
+        return nameSelectable(n, r.id, _owner) ? ('<option value="'+n+'">'+n+'</option>') : "";
       }).join("");
       var occSelects = "";
       for(var pi=0; pi<r.people; pi++){
@@ -593,7 +601,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b18";
+  var BUILD = "b19";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
@@ -649,6 +657,21 @@
 
   function pushLogRemote(entry){ if(online && dbRef){ var r = dbRef.child("log").push(entry); if(r && r.catch) r.catch(writeErr); } }
 
+  // Al mudarme (ganar un cuarto con mis mismas personas), liberar MIS otros cuartos
+  // que tuvieran a esas personas, para que no queden en dos lugares y se libere el pool.
+  function freeMyOtherRooms(exceptId, names){
+    ROOMS.forEach(function(other){
+      if(other.id === exceptId) return;
+      var os = state.rooms[other.id];
+      var mine = os && typeof os.bid === "number" && (os.by || "") === myId && os.names &&
+                 os.names.some(function(n){ return names.indexOf(n) !== -1; });
+      if(!mine) return;
+      var e = makeLog('↪️ <b>'+esc(os.occ||"")+'</b> dejó libre <b>'+other.name+'</b> (se mudaron).');
+      if(online && dbRef){ dbRef.child("rooms/"+other.id).set(null); pushLogRemote(e); }
+      else { state.rooms[other.id] = { bid:null, occ:"", names:[] }; state.log.push(e); }
+    });
+  }
+
   // Pujar: SOLO SUBE. Usa una transacción atómica: solo se acepta si el monto
   // supera la puja actual (a prueba de dos personas pujando a la vez).
   function bidRoom(id, amount, names){
@@ -660,6 +683,7 @@
       if(amount <= cur){ toast("Debes pujar más de " + money(cur) + ".", "warn"); return; }
       state.rooms[id] = { bid: amount, names: names, occ: occ, by: myId, prev: cur };
       state.log.push(makeLog('<b>'+esc(occ)+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
+      freeMyOtherRooms(id, names);
       setDiag("(local) Puja aplicada: " + rm.name + " = $" + amount, "ok");
       render(); return;
     }
@@ -673,6 +697,7 @@
       if(!committed){ setDiag("✗ Puja rechazada: alguien ya pujó igual o más.", "bad"); toast("Alguien ya pujó igual o más alto. Sube tu monto.", "warn"); return; }
       setDiag("✓ Puja registrada: " + rm.name + " = $" + amount + " ("+occ+")", "ok");
       pushLogRemote(makeLog('<b>'+esc(occ)+'</b> puja <b>'+rm.name+'</b> a '+money(amount)+' / persona.'));
+      freeMyOtherRooms(id, names);
     });
   }
 
