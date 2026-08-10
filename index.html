@@ -250,7 +250,7 @@
     <div class="log" id="log"></div>
   </section>
 
-  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b20</footer>
+  <footer>El total siempre suma $12,611.30. En modo en vivo, todos ven las pujas al instante. · versión b21</footer>
 </div>
 
 <!-- Firebase (para subasta en tiempo real). Si no hay config, la app funciona en modo local. -->
@@ -561,7 +561,9 @@
     if(f !== lastFrozen){ lastFrozen = f; render(); }
   }
   // aplica el reloj indicado en el link admin (una sola vez, al estar conectado)
+  var ADMIN_CLOCK_ENABLED = false; // link admin del reloj DESHABILITADO (poner true para reactivar)
   function applyAdminClock(){
+    if(!ADMIN_CLOCK_ENABLED) return;
     if(adminApplied) return;
     if(adminFin === null && adminReloj === null) return;
     if(!(online && dbRef)) return;
@@ -600,7 +602,7 @@
   }
 
   // ---- Sincronización con Firebase ----
-  var BUILD = "b20";
+  var BUILD = "b21";
   function setSync(kind, text){
     var el = document.getElementById("sync");
     el.className = "sync " + (kind==="live"?"live":(kind==="err"?"err":""));
